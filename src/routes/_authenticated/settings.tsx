@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Building2, Flame, Package } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Plus, Trash2, Building2, Flame, Package, Users, KeyRound, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { listStaff, createStaff, updateStaffRole, deleteStaff, resetStaffPassword } from "@/lib/staff.functions";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — GasFlow Pro" }] }),
@@ -18,33 +23,199 @@ export const Route = createFileRoute("/_authenticated/settings")({
 });
 
 function SettingsPage() {
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const { data: ok } = await supabase.rpc("has_role", { _user_id: data.user.id, _role: "admin" });
+      setIsAdmin(!!ok);
+    });
+  }, []);
+
   return (
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">Company, gas types, cylinder sizes.</p>
+        <p className="text-sm text-muted-foreground mt-1">Company, gases, sizes{isAdmin ? " and staff" : ""}.</p>
       </header>
 
       <Tabs defaultValue="company" className="w-full">
-        <TabsList className="grid grid-cols-3 w-full h-11">
+        <TabsList className={`grid ${isAdmin ? "grid-cols-4" : "grid-cols-3"} w-full h-11`}>
           <TabsTrigger value="company" className="gap-2"><Building2 className="size-4" /> Company</TabsTrigger>
           <TabsTrigger value="gases" className="gap-2"><Flame className="size-4" /> Gases</TabsTrigger>
           <TabsTrigger value="sizes" className="gap-2"><Package className="size-4" /> Sizes</TabsTrigger>
+          {isAdmin && <TabsTrigger value="staff" className="gap-2"><Users className="size-4" /> Staff</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="company" className="mt-5">
-          <CompanyForm />
-        </TabsContent>
-        <TabsContent value="gases" className="mt-5">
-          <GasTypesPanel />
-        </TabsContent>
-        <TabsContent value="sizes" className="mt-5">
-          <SizesPanel />
-        </TabsContent>
+        <TabsContent value="company" className="mt-5"><CompanyForm /></TabsContent>
+        <TabsContent value="gases" className="mt-5"><GasTypesPanel /></TabsContent>
+        <TabsContent value="sizes" className="mt-5"><SizesPanel /></TabsContent>
+        {isAdmin && <TabsContent value="staff" className="mt-5"><StaffPanel /></TabsContent>}
       </Tabs>
     </div>
   );
 }
+
+function StaffPanel() {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [role, setRole] = useState<"admin" | "staff">("staff");
+  const [resetOpen, setResetOpen] = useState<string | null>(null);
+  const [newPwd, setNewPwd] = useState("");
+
+  const list = useServerFn(listStaff);
+  const create = useServerFn(createStaff);
+  const updateRole = useServerFn(updateStaffRole);
+  const del = useServerFn(deleteStaff);
+  const resetPwd = useServerFn(resetStaffPassword);
+
+  const { data, isLoading } = useQuery({ queryKey: ["staff"], queryFn: () => list() });
+
+  const createMut = useMutation({
+    mutationFn: (vals: any) => create({ data: vals }),
+    onSuccess: () => {
+      toast.success("Staff added");
+      qc.invalidateQueries({ queryKey: ["staff"] });
+      setOpen(false);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const roleMut = useMutation({
+    mutationFn: (v: { user_id: string; role: "admin" | "staff" }) => updateRole({ data: v }),
+    onSuccess: () => {
+      toast.success("Role updated");
+      qc.invalidateQueries({ queryKey: ["staff"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const delMut = useMutation({
+    mutationFn: (user_id: string) => del({ data: { user_id } }),
+    onSuccess: () => {
+      toast.success("User removed");
+      qc.invalidateQueries({ queryKey: ["staff"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const pwdMut = useMutation({
+    mutationFn: (v: { user_id: string; password: string }) => resetPwd({ data: v }),
+    onSuccess: () => {
+      toast.success("Password updated");
+      setResetOpen(null);
+      setNewPwd("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    createMut.mutate({
+      email: String(f.get("email") ?? "").trim(),
+      password: String(f.get("password") ?? ""),
+      full_name: String(f.get("full_name") ?? "").trim(),
+      role,
+    });
+  };
+
+  return (
+    <Card className="p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-display font-bold">Staff Management</h3>
+          <p className="text-xs text-muted-foreground">Only admins can add or remove users.</p>
+        </div>
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>
+            <Button className="gap-2"><Plus className="size-4" /> Add User</Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+            <SheetHeader><SheetTitle>Add Staff / Admin</SheetTitle></SheetHeader>
+            <form onSubmit={onSubmit} className="mt-6 space-y-4">
+              <div><Label className="text-xs">Full Name*</Label><Input name="full_name" required className="mt-1.5 h-11" /></div>
+              <div><Label className="text-xs">Email*</Label><Input name="email" type="email" required className="mt-1.5 h-11" /></div>
+              <div><Label className="text-xs">Temporary Password*</Label><Input name="password" type="text" minLength={8} required className="mt-1.5 h-11" placeholder="min 8 chars" /></div>
+              <div>
+                <Label className="text-xs">Role*</Label>
+                <Select value={role} onValueChange={(v) => setRole(v as any)}>
+                  <SelectTrigger className="mt-1.5 h-11"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" disabled={createMut.isPending} className="w-full h-11">
+                {createMut.isPending ? "Creating…" : "Create User"}
+              </Button>
+              <p className="text-[11px] text-muted-foreground">Share the email and temporary password with the user. They can change it later.</p>
+            </form>
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      <div className="divide-y">
+        {isLoading && <div className="py-4 text-sm text-muted-foreground">Loading…</div>}
+        {!isLoading && (data ?? []).length === 0 && <div className="py-4 text-sm text-muted-foreground">No staff yet.</div>}
+        {(data ?? []).map((u: any) => (
+          <div key={u.id} className="py-3 flex items-center gap-3">
+            <div className="size-9 rounded-full bg-brand/10 text-brand grid place-items-center font-bold text-sm">
+              {(u.full_name ?? u.email ?? "?").charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold truncate">{u.full_name ?? u.email}</div>
+              <div className="text-xs text-muted-foreground truncate">{u.email}</div>
+            </div>
+            <Select value={u.role} onValueChange={(v) => roleMut.mutate({ user_id: u.id, role: v as any })}>
+              <SelectTrigger className="h-9 w-28 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="staff">Staff</SelectItem>
+                <SelectItem value="admin"><span className="flex items-center gap-1"><ShieldCheck className="size-3" /> Admin</span></SelectItem>
+              </SelectContent>
+            </Select>
+            <AlertDialog open={resetOpen === u.id} onOpenChange={(o) => { if (!o) { setResetOpen(null); setNewPwd(""); } }}>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={() => setResetOpen(u.id)} title="Reset password">
+                  <KeyRound className="size-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset password</AlertDialogTitle>
+                  <AlertDialogDescription>Set a new password for {u.email}.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <Input type="text" placeholder="New password (min 8)" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} className="h-11" />
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => pwdMut.mutate({ user_id: u.id, password: newPwd })}>Update</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" title="Delete"><Trash2 className="size-4 text-destructive" /></Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove user?</AlertDialogTitle>
+                  <AlertDialogDescription>This will permanently delete {u.email} and revoke access.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => delMut.mutate(u.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Badge variant={u.role === "admin" ? "default" : "secondary"} className="hidden md:inline-flex text-[10px]">{u.role}</Badge>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 
 function CompanyForm() {
   const qc = useQueryClient();
