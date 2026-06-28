@@ -138,6 +138,34 @@ function CustomerProfilePage() {
       </div>
 
       <div>
+        <h2 className="font-display text-lg font-bold mb-3">Cylinders With Customer (by Gas & Size)</h2>
+        {breakdown.length === 0 ? (
+          <Card className="p-6 text-sm text-muted-foreground">Koi cylinder is customer ke pas track nahi.</Card>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {breakdown.map((b, i) => (
+              <Card key={i} className="p-3">
+                <div className="flex items-center gap-2">
+                  <div className="size-7 rounded-md grid place-items-center text-white text-[10px] font-bold" style={{ background: b.color || "var(--brand)" }}>
+                    {b.gas.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold truncate">{b.gas}</div>
+                    <div className="text-[10px] text-muted-foreground">{b.size}</div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-2 text-xs">
+                  <span className="text-success font-semibold">Filled: {b.filled}</span>
+                  <span className="text-muted-foreground font-semibold">Empty: {b.empty}</span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+
         <h2 className="font-display text-lg font-bold mb-3">History</h2>
         <div className="space-y-2">
           {timeline.length === 0 && <Card className="p-8 text-center text-sm text-muted-foreground">No activity yet.</Card>}
