@@ -55,13 +55,17 @@ function CustomersPage() {
         supabase.from("payments").select("customer_id,amount"),
         supabase.from("customer_opening_balances").select("customer_id,quantity,condition"),
       ]);
-      const map = new Map<string, { out: number; due: number }>();
-      (cs ?? []).forEach((c) => map.set(c.id, { out: c.opening_cylinders ?? 0, due: Number(c.opening_due ?? 0) }));
+      const openSum = new Map<string, number>();
       (obs ?? []).forEach((o: any) => {
-        const e = map.get(o.customer_id);
-        if (!e) return;
-        e.out += Number(o.quantity ?? 0);
+        openSum.set(o.customer_id, (openSum.get(o.customer_id) ?? 0) + Number(o.quantity ?? 0));
       });
+      const map = new Map<string, { out: number; due: number }>();
+      (cs ?? []).forEach((c) => {
+        const breakdown = openSum.get(c.id);
+        const opening = breakdown !== undefined ? breakdown : Number(c.opening_cylinders ?? 0);
+        map.set(c.id, { out: opening, due: Number(c.opening_due ?? 0) });
+      });
+
       (ms ?? []).forEach((m: any) => {
         const e = map.get(m.customer_id);
         if (!e) return;
