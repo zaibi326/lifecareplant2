@@ -16,18 +16,18 @@ function StockPage() {
     queryKey: ["stock"],
     queryFn: async () => {
       const today = todayISO();
-      const [gases, sizes, movements, customers, production] = await Promise.all([
+      const [gases, sizes, movements, openings, production] = await Promise.all([
         supabase.from("gas_types").select("id,name,color").eq("active", true).order("name"),
         supabase.from("cylinder_sizes").select("id,name").eq("active", true).order("name"),
         supabase.from("cylinder_movements").select("type,quantity,gas_type_id,cylinder_size_id,date"),
-        supabase.from("customers").select("opening_cylinders"),
+        supabase.from("customer_opening_balances").select("quantity,gas_type_id,cylinder_size_id,condition"),
         supabase.from("production").select("quantity,date").eq("date", today),
       ]);
       return {
         gases: gases.data ?? [],
         sizes: sizes.data ?? [],
         movements: movements.data ?? [],
-        customers: customers.data ?? [],
+        openings: openings.data ?? [],
         production: production.data ?? [],
       };
     },
@@ -35,14 +35,17 @@ function StockPage() {
 
   const today = todayISO();
   const ms: any[] = data?.movements ?? [];
+  const obs: any[] = data?.openings ?? [];
   const sumBy = (filter: (m: any) => boolean) => ms.filter(filter).reduce((a, b) => a + Number(b.quantity ?? 0), 0);
+  const sumOpen = (filter: (o: any) => boolean) => obs.filter(filter).reduce((a, b) => a + Number(b.quantity ?? 0), 0);
 
   const totalReceived = sumBy((m) => m.type === "receive");
   const totalDelivered = sumBy((m) => m.type === "deliver");
   const plantStock = Math.max(0, totalReceived - totalDelivered);
-  const customerOpening = (data?.customers ?? []).reduce((a, c: any) => a + Number(c.opening_cylinders ?? 0), 0);
+  const customerOpening = sumOpen(() => true);
   const withCustomers = Math.max(0, customerOpening + totalDelivered - totalReceived);
   const todayProduction = (data?.production ?? []).reduce((a, p: any) => a + Number(p.quantity ?? 0), 0);
+
 
   return (
     <div className="space-y-6">
