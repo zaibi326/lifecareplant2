@@ -71,8 +71,10 @@ function StockPage() {
           {(data?.gases ?? []).map((g: any) => {
             const r = sumBy((m) => m.type === "receive" && m.gas_type_id === g.id);
             const d = sumBy((m) => m.type === "deliver" && m.gas_type_id === g.id);
+            const op = sumOpen((o) => o.gas_type_id === g.id);
             const stock = Math.max(0, r - d);
-            const out = Math.max(0, d - r);
+            const out = Math.max(0, op + d - r);
+
             return (
               <Card key={g.id} className="p-4">
                 <div className="flex items-center justify-between">
