@@ -3,11 +3,14 @@ import { CloudOff, RefreshCw } from "lucide-react";
 import { flushQueue, pendingCount, subscribe } from "@/lib/offline-queue";
 
 export function OfflineIndicator() {
-  const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
+  const [mounted, setMounted] = useState(false);
+  const [online, setOnline] = useState(true);
   const [pending, setPending] = useState(0);
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    setOnline(navigator.onLine);
     const refresh = () => { void pendingCount().then(setPending); };
     refresh();
     const unsub = subscribe(refresh);
@@ -24,7 +27,8 @@ export function OfflineIndicator() {
     };
   }, []);
 
-  if (online && pending === 0) return null;
+  if (!mounted || (online && pending === 0)) return null;
+
 
   const sync = async () => {
     if (!online) return;
