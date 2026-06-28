@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -493,8 +493,8 @@ function PermissionsMatrix() {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <>
-                <tr key={r.module} className="bg-muted/40">
+              <Fragment key={r.module}>
+                <tr className="bg-muted/40">
                   <td colSpan={3} className="py-2 px-5 font-display font-bold text-xs uppercase tracking-wider">{r.module}</td>
                 </tr>
                 {r.actions.map((a, i) => (
@@ -512,7 +512,7 @@ function PermissionsMatrix() {
                     </td>
                   </tr>
                 ))}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
