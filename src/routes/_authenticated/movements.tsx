@@ -122,6 +122,32 @@ function MovementsPage() {
   );
 }
 
+async function printInvoice(m: any) {
+  const { data: s } = await supabase.from("settings").select("*").eq("id", 1).maybeSingle();
+  const tax = Number(s?.tax_percent ?? 0);
+  const sub = Number(m.total_amount ?? 0);
+  const taxAmt = sub * tax / 100;
+  const grand = sub + taxAmt;
+  printHTML(`Invoice ${m.invoice_number ?? ""}`, `
+    <div class="head">
+      <div><h1>${s?.company_name ?? "GasFlow Pro"}</h1><div class="muted">${s?.company_address ?? ""}</div><div class="muted">${s?.company_phone ?? ""}</div></div>
+      <div style="text-align:right"><span class="badge">INVOICE</span><div style="margin-top:8px;font-weight:700">${m.invoice_number ?? ""}</div><div class="muted">${formatDate(m.date)}</div></div>
+    </div>
+    <h2>Bill To</h2>
+    <div style="font-weight:600">${m.customers?.name ?? ""}</div>
+    <h2>Items</h2>
+    <table><thead><tr><th>Description</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Amount</th></tr></thead>
+    <tbody><tr><td>${m.gas_types?.name ?? ""} — ${m.cylinder_sizes?.name ?? ""}</td><td class="right">${m.quantity}</td><td class="right">${formatCurrency(Number(m.rate ?? 0))}</td><td class="right">${formatCurrency(sub)}</td></tr></tbody></table>
+    <div class="totals">
+      <div><div class="label">Subtotal</div><div class="val">${formatCurrency(sub)}</div></div>
+      ${tax ? `<div><div class="label">Tax (${tax}%)</div><div class="val">${formatCurrency(taxAmt)}</div></div>` : ""}
+      <div><div class="label">Total</div><div class="val" style="font-size:18px">${formatCurrency(grand)}</div></div>
+    </div>
+    ${m.vehicle_number ? `<div class="muted" style="margin-top:16px">Vehicle: ${m.vehicle_number}${m.driver_name ? ` • Driver: ${m.driver_name}` : ""}</div>` : ""}
+    ${s?.invoice_footer ? `<div class="muted" style="margin-top:24px;border-top:1px solid #e2e8f0;padding-top:12px">${s.invoice_footer}</div>` : ""}
+  `);
+}
+
 function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
   const qc = useQueryClient();
   const [customer, setCustomer] = useState("");
@@ -143,11 +169,22 @@ function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
     },
   });
 
+  const [photos, setPhotos] = useState<File[]>([]);
+
   const total = type === "deliver" ? Number(qty || 0) * Number(rate || 0) : null;
 
   const save = useMutation({
     mutationFn: async (f: FormData) => {
       if (!customer || !gas || !size || !qty) throw new Error("Customer, gas, size, qty required");
+      const photo_urls: string[] = [];
+      for (const file of photos) {
+        const path = `${customer}/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, "_")}`;
+        const up = await supabase.storage.from("movement-photos").upload(path, file, { upsert: false });
+        if (up.error) throw up.error;
+        const { data: signed } = await supabase.storage.from("movement-photos").createSignedUrl(path, 60 * 60 * 24 * 365);
+        if (signed?.signedUrl) photo_urls.push(signed.signedUrl);
+      }
+      const cond = String(f.get("condition") ?? "") as any;
       const { error } = await supabase.from("cylinder_movements").insert({
         type,
         customer_id: customer,
@@ -159,8 +196,9 @@ function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
         date,
         vehicle_number: String(f.get("vehicle_number") ?? "").trim() || null,
         driver_name: String(f.get("driver_name") ?? "").trim() || null,
-        condition: type === "receive" ? "empty" : "filled",
+        condition: cond || (type === "receive" ? "empty" : "filled"),
         remarks: String(f.get("remarks") ?? "").trim() || null,
+        photo_urls: photo_urls.length ? photo_urls : null,
       });
       if (error) throw error;
     },
@@ -175,6 +213,11 @@ function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     save.mutate(new FormData(e.currentTarget));
+  };
+
+  const addFiles = (files: FileList | null) => {
+    if (!files) return;
+    setPhotos((p) => [...p, ...Array.from(files)].slice(0, 5));
   };
 
   return (
