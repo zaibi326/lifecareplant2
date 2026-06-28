@@ -14,6 +14,61 @@ export type Database = {
   }
   public: {
     Tables: {
+      customer_opening_balances: {
+        Row: {
+          condition: Database["public"]["Enums"]["cylinder_condition"]
+          created_at: string
+          customer_id: string
+          cylinder_size_id: string
+          gas_type_id: string
+          id: string
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          condition?: Database["public"]["Enums"]["cylinder_condition"]
+          created_at?: string
+          customer_id: string
+          cylinder_size_id: string
+          gas_type_id: string
+          id?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          condition?: Database["public"]["Enums"]["cylinder_condition"]
+          created_at?: string
+          customer_id?: string
+          cylinder_size_id?: string
+          gas_type_id?: string
+          id?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_opening_balances_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_opening_balances_cylinder_size_id_fkey"
+            columns: ["cylinder_size_id"]
+            isOneToOne: false
+            referencedRelation: "cylinder_sizes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_opening_balances_gas_type_id_fkey"
+            columns: ["gas_type_id"]
+            isOneToOne: false
+            referencedRelation: "gas_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
