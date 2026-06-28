@@ -141,7 +141,7 @@ function CustomersPage() {
       <div className="space-y-2">
         {filtered.length === 0 && <Card className="p-8 text-center text-sm text-muted-foreground">No customers yet. Add your first customer.</Card>}
         {filtered.map((c: any) => (
-          <Link key={c.id} to={"/customers" as any} className="block">
+          <Link key={c.id} to="/customers/$customerId" params={{ customerId: c.id }} className="block">
             <Card className="p-4 flex items-center gap-3 hover:bg-muted/40 transition-colors">
               <div className="size-11 rounded-full bg-brand/10 text-brand grid place-items-center font-bold">
                 {c.name.charAt(0).toUpperCase()}

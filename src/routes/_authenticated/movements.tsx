@@ -11,8 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { ArrowDownToLine, ArrowUpFromLine, Plus, Search } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, Plus, Search, Camera, Printer, X } from "lucide-react";
 import { toast } from "sonner";
+import { printHTML } from "@/lib/print";
 
 type MovType = "receive" | "deliver";
 
@@ -105,15 +106,46 @@ function MovementsPage() {
                 {m.invoice_number ? ` • ${m.invoice_number}` : ""}
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-right flex flex-col items-end gap-1">
               <div className="font-display font-bold">{m.quantity}</div>
-              {type === "deliver" && <Badge variant="secondary" className="text-[10px] mt-1">{formatCurrency(m.total_amount)}</Badge>}
+              {type === "deliver" && <Badge variant="secondary" className="text-[10px]">{formatCurrency(m.total_amount)}</Badge>}
+              {type === "deliver" && (
+                <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs" onClick={() => printInvoice(m)}>
+                  <Printer className="size-3" /> Invoice
+                </Button>
+              )}
             </div>
           </Card>
         ))}
       </div>
     </div>
   );
+}
+
+async function printInvoice(m: any) {
+  const { data: s } = await supabase.from("settings").select("*").eq("id", 1).maybeSingle();
+  const tax = Number(s?.tax_percent ?? 0);
+  const sub = Number(m.total_amount ?? 0);
+  const taxAmt = sub * tax / 100;
+  const grand = sub + taxAmt;
+  printHTML(`Invoice ${m.invoice_number ?? ""}`, `
+    <div class="head">
+      <div><h1>${s?.company_name ?? "GasFlow Pro"}</h1><div class="muted">${s?.company_address ?? ""}</div><div class="muted">${s?.company_phone ?? ""}</div></div>
+      <div style="text-align:right"><span class="badge">INVOICE</span><div style="margin-top:8px;font-weight:700">${m.invoice_number ?? ""}</div><div class="muted">${formatDate(m.date)}</div></div>
+    </div>
+    <h2>Bill To</h2>
+    <div style="font-weight:600">${m.customers?.name ?? ""}</div>
+    <h2>Items</h2>
+    <table><thead><tr><th>Description</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Amount</th></tr></thead>
+    <tbody><tr><td>${m.gas_types?.name ?? ""} — ${m.cylinder_sizes?.name ?? ""}</td><td class="right">${m.quantity}</td><td class="right">${formatCurrency(Number(m.rate ?? 0))}</td><td class="right">${formatCurrency(sub)}</td></tr></tbody></table>
+    <div class="totals">
+      <div><div class="label">Subtotal</div><div class="val">${formatCurrency(sub)}</div></div>
+      ${tax ? `<div><div class="label">Tax (${tax}%)</div><div class="val">${formatCurrency(taxAmt)}</div></div>` : ""}
+      <div><div class="label">Total</div><div class="val" style="font-size:18px">${formatCurrency(grand)}</div></div>
+    </div>
+    ${m.vehicle_number ? `<div class="muted" style="margin-top:16px">Vehicle: ${m.vehicle_number}${m.driver_name ? ` • Driver: ${m.driver_name}` : ""}</div>` : ""}
+    ${s?.invoice_footer ? `<div class="muted" style="margin-top:24px;border-top:1px solid #e2e8f0;padding-top:12px">${s.invoice_footer}</div>` : ""}
+  `);
 }
 
 function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
@@ -137,11 +169,22 @@ function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
     },
   });
 
+  const [photos, setPhotos] = useState<File[]>([]);
+
   const total = type === "deliver" ? Number(qty || 0) * Number(rate || 0) : null;
 
   const save = useMutation({
     mutationFn: async (f: FormData) => {
       if (!customer || !gas || !size || !qty) throw new Error("Customer, gas, size, qty required");
+      const photo_urls: string[] = [];
+      for (const file of photos) {
+        const path = `${customer}/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, "_")}`;
+        const up = await supabase.storage.from("movement-photos").upload(path, file, { upsert: false });
+        if (up.error) throw up.error;
+        const { data: signed } = await supabase.storage.from("movement-photos").createSignedUrl(path, 60 * 60 * 24 * 365);
+        if (signed?.signedUrl) photo_urls.push(signed.signedUrl);
+      }
+      const cond = String(f.get("condition") ?? "") as any;
       const { error } = await supabase.from("cylinder_movements").insert({
         type,
         customer_id: customer,
@@ -153,8 +196,9 @@ function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
         date,
         vehicle_number: String(f.get("vehicle_number") ?? "").trim() || null,
         driver_name: String(f.get("driver_name") ?? "").trim() || null,
-        condition: type === "receive" ? "empty" : "filled",
+        condition: cond || (type === "receive" ? "empty" : "filled"),
         remarks: String(f.get("remarks") ?? "").trim() || null,
+        photo_urls: photo_urls.length ? photo_urls : null,
       });
       if (error) throw error;
     },
@@ -169,6 +213,11 @@ function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     save.mutate(new FormData(e.currentTarget));
+  };
+
+  const addFiles = (files: FileList | null) => {
+    if (!files) return;
+    setPhotos((p) => [...p, ...Array.from(files)].slice(0, 5));
   };
 
   return (
@@ -227,6 +276,42 @@ function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
           <Label className="text-xs">Driver</Label>
           <Input name="driver_name" className="mt-1.5 h-11" />
         </div>
+      </div>
+      <div>
+        <Label className="text-xs">Cylinder Condition</Label>
+        <Select name="condition" defaultValue={type === "receive" ? "empty" : "filled"}>
+          <SelectTrigger className="mt-1.5 h-11"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="filled">Filled</SelectItem>
+            <SelectItem value="empty">Empty</SelectItem>
+            <SelectItem value="unknown">Unknown</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="text-xs">Photos (optional, max 5)</Label>
+        <div className="mt-1.5 grid grid-cols-2 gap-2">
+          <label className="h-11 rounded-md border border-dashed flex items-center justify-center gap-2 text-xs cursor-pointer hover:bg-muted/40">
+            <Camera className="size-4" /> Camera
+            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => addFiles(e.target.files)} />
+          </label>
+          <label className="h-11 rounded-md border border-dashed flex items-center justify-center gap-2 text-xs cursor-pointer hover:bg-muted/40">
+            <Plus className="size-4" /> Upload
+            <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addFiles(e.target.files)} />
+          </label>
+        </div>
+        {photos.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {photos.map((p, i) => (
+              <div key={i} className="relative size-16 rounded-md border overflow-hidden">
+                <img src={URL.createObjectURL(p)} alt="" className="w-full h-full object-cover" />
+                <button type="button" onClick={() => setPhotos((arr) => arr.filter((_, j) => j !== i))} className="absolute top-0.5 right-0.5 size-5 rounded-full bg-black/70 text-white grid place-items-center">
+                  <X className="size-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <div>
         <Label className="text-xs">Remarks</Label>
