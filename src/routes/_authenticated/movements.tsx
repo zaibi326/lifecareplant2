@@ -11,8 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { ArrowDownToLine, ArrowUpFromLine, Plus, Search } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, Plus, Search, Camera, Printer, X } from "lucide-react";
 import { toast } from "sonner";
+import { printHTML } from "@/lib/print";
 
 type MovType = "receive" | "deliver";
 
@@ -105,9 +106,14 @@ function MovementsPage() {
                 {m.invoice_number ? ` • ${m.invoice_number}` : ""}
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-right flex flex-col items-end gap-1">
               <div className="font-display font-bold">{m.quantity}</div>
-              {type === "deliver" && <Badge variant="secondary" className="text-[10px] mt-1">{formatCurrency(m.total_amount)}</Badge>}
+              {type === "deliver" && <Badge variant="secondary" className="text-[10px]">{formatCurrency(m.total_amount)}</Badge>}
+              {type === "deliver" && (
+                <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs" onClick={() => printInvoice(m)}>
+                  <Printer className="size-3" /> Invoice
+                </Button>
+              )}
             </div>
           </Card>
         ))}
