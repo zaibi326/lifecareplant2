@@ -10,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Phone, MapPin, Users as UsersIcon, Wallet, Package } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Search, Phone, MapPin, Users as UsersIcon, Wallet, Package, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/customers")({
@@ -18,30 +19,46 @@ export const Route = createFileRoute("/_authenticated/customers")({
   component: CustomersPage,
 });
 
+type OpenRow = { gas_type_id: string; cylinder_size_id: string; condition: "filled" | "empty"; quantity: number };
+
 function CustomersPage() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [openRows, setOpenRows] = useState<OpenRow[]>([]);
+
+  const { data: refs } = useQuery({
+    queryKey: ["customer-form-refs"],
+    queryFn: async () => {
+      const [g, s] = await Promise.all([
+        supabase.from("gas_types").select("id,name").eq("active", true).order("name"),
+        supabase.from("cylinder_sizes").select("id,name").eq("active", true).order("name"),
+      ]);
+      return { gases: g.data ?? [], sizes: s.data ?? [] };
+    },
+  });
 
   const { data } = useQuery({
     queryKey: ["customers-with-balance"],
     queryFn: async () => {
-      const [{ data: cs }, { data: ms }, { data: ps }] = await Promise.all([
+      const [{ data: cs }, { data: ms }, { data: ps }, { data: obs }] = await Promise.all([
         supabase.from("customers").select("*").order("name"),
         supabase.from("cylinder_movements").select("customer_id,type,quantity,total_amount"),
         supabase.from("payments").select("customer_id,amount"),
+        supabase.from("customer_opening_balances").select("customer_id,quantity,condition"),
       ]);
       const map = new Map<string, { out: number; due: number }>();
       (cs ?? []).forEach((c) => map.set(c.id, { out: c.opening_cylinders ?? 0, due: Number(c.opening_due ?? 0) }));
+      (obs ?? []).forEach((o: any) => {
+        const e = map.get(o.customer_id);
+        if (!e) return;
+        e.out += Number(o.quantity ?? 0);
+      });
       (ms ?? []).forEach((m: any) => {
         const e = map.get(m.customer_id);
         if (!e) return;
-        if (m.type === "deliver") {
-          e.out += Number(m.quantity ?? 0);
-          e.due += Number(m.total_amount ?? 0);
-        } else {
-          e.out -= Number(m.quantity ?? 0);
-        }
+        if (m.type === "deliver") { e.out += Number(m.quantity ?? 0); e.due += Number(m.total_amount ?? 0); }
+        else { e.out -= Number(m.quantity ?? 0); }
       });
       (ps ?? []).forEach((p: any) => {
         const e = map.get(p.customer_id);
@@ -66,13 +83,25 @@ function CustomersPage() {
 
   const create = useMutation({
     mutationFn: async (vals: any) => {
-      const { error } = await supabase.from("customers").insert(vals);
+      const rows = openRows.filter((r) => r.gas_type_id && r.cylinder_size_id && r.quantity > 0);
+      const totalOpen = rows.reduce((a, r) => a + Number(r.quantity || 0), 0);
+      const { data: ins, error } = await supabase
+        .from("customers")
+        .insert({ ...vals, opening_cylinders: totalOpen })
+        .select("id")
+        .single();
       if (error) throw error;
+      if (rows.length > 0) {
+        const payload = rows.map((r) => ({ ...r, customer_id: ins.id }));
+        const { error: e2 } = await supabase.from("customer_opening_balances").insert(payload);
+        if (e2) throw e2;
+      }
     },
     onSuccess: () => {
       toast.success("Customer added");
       qc.invalidateQueries({ queryKey: ["customers-with-balance"] });
       setOpen(false);
+      setOpenRows([]);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -85,11 +114,15 @@ function CustomersPage() {
       phone: String(f.get("phone") ?? "").trim() || null,
       address: String(f.get("address") ?? "").trim() || null,
       category: String(f.get("category") ?? "").trim() || null,
-      opening_cylinders: Number(f.get("opening_cylinders") ?? 0),
       opening_due: Number(f.get("opening_due") ?? 0),
       notes: String(f.get("notes") ?? "").trim() || null,
     });
   };
+
+  const addRow = () =>
+    setOpenRows((r) => [...r, { gas_type_id: refs?.gases[0]?.id ?? "", cylinder_size_id: refs?.sizes[0]?.id ?? "", condition: "filled", quantity: 1 }]);
+  const updRow = (i: number, patch: Partial<OpenRow>) => setOpenRows((r) => r.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  const delRow = (i: number) => setOpenRows((r) => r.filter((_, idx) => idx !== i));
 
   return (
     <div className="space-y-5">
@@ -102,7 +135,7 @@ function CustomersPage() {
           <SheetTrigger asChild>
             <Button className="gap-2"><Plus className="size-4" /> New Customer</Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
             <SheetHeader><SheetTitle>New Customer</SheetTitle></SheetHeader>
             <form onSubmit={onSubmit} className="mt-6 space-y-4">
               <Field label="Name" name="name" required />
@@ -111,10 +144,47 @@ function CustomersPage() {
                 <Field label="Category" name="category" placeholder="Industrial / Medical" />
               </div>
               <Field label="Address" name="address" />
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Opening Cylinders" name="opening_cylinders" type="number" defaultValue="0" />
-                <Field label="Opening Due (Rs)" name="opening_due" type="number" defaultValue="0" />
+              <Field label="Opening Due (Rs)" name="opening_due" type="number" defaultValue="0" />
+
+              <div className="rounded-lg border p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold">Opening Cylinder Balance</Label>
+                  <Button type="button" size="sm" variant="outline" onClick={addRow} className="h-8 gap-1">
+                    <Plus className="size-3.5" /> Add
+                  </Button>
+                </div>
+                {openRows.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Customer ke pas pehle se mojood cylinders gas type + size + condition ke hisab se add karein.</p>
+                )}
+                {openRows.map((r, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_90px_70px_auto] gap-1.5 items-center">
+                    <Select value={r.gas_type_id} onValueChange={(v) => updRow(i, { gas_type_id: v })}>
+                      <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Gas" /></SelectTrigger>
+                      <SelectContent>
+                        {(refs?.gases ?? []).map((g: any) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Select value={r.cylinder_size_id} onValueChange={(v) => updRow(i, { cylinder_size_id: v })}>
+                      <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Size" /></SelectTrigger>
+                      <SelectContent>
+                        {(refs?.sizes ?? []).map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Select value={r.condition} onValueChange={(v: any) => updRow(i, { condition: v })}>
+                      <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="filled">Filled</SelectItem>
+                        <SelectItem value="empty">Empty</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input type="number" min={0} value={r.quantity} onChange={(e) => updRow(i, { quantity: Number(e.target.value) })} className="h-9 text-xs" />
+                    <Button type="button" size="icon" variant="ghost" onClick={() => delRow(i)} className="size-9">
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
               </div>
+
               <div>
                 <Label className="text-xs">Notes</Label>
                 <Textarea name="notes" rows={2} className="mt-1.5" />

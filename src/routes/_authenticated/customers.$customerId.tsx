@@ -20,19 +20,21 @@ function CustomerProfilePage() {
   const { data, isLoading } = useQuery({
     queryKey: ["customer-profile", customerId],
     queryFn: async () => {
-      const [c, ms, ps, s] = await Promise.all([
+      const [c, ms, ps, s, ob] = await Promise.all([
         supabase.from("customers").select("*").eq("id", customerId).maybeSingle(),
         supabase.from("cylinder_movements").select("*,gas_types(name,color),cylinder_sizes(name)").eq("customer_id", customerId).order("date", { ascending: false }).order("created_at", { ascending: false }),
         supabase.from("payments").select("*").eq("customer_id", customerId).order("date", { ascending: false }),
         supabase.from("settings").select("*").eq("id", 1).maybeSingle(),
+        supabase.from("customer_opening_balances").select("*,gas_types(name,color),cylinder_sizes(name)").eq("customer_id", customerId),
       ]);
-      return { customer: c.data, movements: ms.data ?? [], payments: ps.data ?? [], settings: s.data };
+      return { customer: c.data, movements: ms.data ?? [], payments: ps.data ?? [], settings: s.data, opening: ob.data ?? [] };
     },
   });
 
   const balance = useMemo(() => {
     if (!data?.customer) return { withCust: 0, due: 0, last: null as string | null };
-    let withCust = data.customer.opening_cylinders ?? 0;
+    let withCust = 0;
+    (data.opening ?? []).forEach((o: any) => { withCust += Number(o.quantity ?? 0); });
     let due = Number(data.customer.opening_due ?? 0);
     data.movements.forEach((m: any) => {
       if (m.type === "deliver") { withCust += m.quantity; due += Number(m.total_amount ?? 0); }
@@ -42,6 +44,31 @@ function CustomerProfilePage() {
     const last = data.movements[0]?.date ?? data.payments[0]?.date ?? null;
     return { withCust, due, last };
   }, [data]);
+
+  // breakdown: gas + size + condition
+  const breakdown = useMemo(() => {
+    const map = new Map<string, { gas: string; size: string; color?: string; filled: number; empty: number }>();
+    const key = (g: string, s: string) => `${g}||${s}`;
+    const ensure = (g: string, s: string, color?: string) => {
+      const k = key(g, s);
+      if (!map.has(k)) map.set(k, { gas: g, size: s, color, filled: 0, empty: 0 });
+      return map.get(k)!;
+    };
+    (data?.opening ?? []).forEach((o: any) => {
+      const row = ensure(o.gas_types?.name ?? "—", o.cylinder_sizes?.name ?? "—", o.gas_types?.color);
+      if (o.condition === "empty") row.empty += Number(o.quantity ?? 0);
+      else row.filled += Number(o.quantity ?? 0);
+    });
+    (data?.movements ?? []).forEach((m: any) => {
+      const row = ensure(m.gas_types?.name ?? "—", m.cylinder_sizes?.name ?? "—", m.gas_types?.color);
+      const cond = m.condition === "empty" ? "empty" : "filled";
+      const q = Number(m.quantity ?? 0);
+      if (m.type === "deliver") row[cond] += q;
+      else row[cond] -= q;
+    });
+    return Array.from(map.values()).filter((r) => r.filled !== 0 || r.empty !== 0);
+  }, [data]);
+
 
   const timeline = useMemo(() => {
     const items: any[] = [];
@@ -111,6 +138,34 @@ function CustomerProfilePage() {
       </div>
 
       <div>
+        <h2 className="font-display text-lg font-bold mb-3">Cylinders With Customer (by Gas & Size)</h2>
+        {breakdown.length === 0 ? (
+          <Card className="p-6 text-sm text-muted-foreground">Koi cylinder is customer ke pas track nahi.</Card>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {breakdown.map((b, i) => (
+              <Card key={i} className="p-3">
+                <div className="flex items-center gap-2">
+                  <div className="size-7 rounded-md grid place-items-center text-white text-[10px] font-bold" style={{ background: b.color || "var(--brand)" }}>
+                    {b.gas.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold truncate">{b.gas}</div>
+                    <div className="text-[10px] text-muted-foreground">{b.size}</div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-2 text-xs">
+                  <span className="text-success font-semibold">Filled: {b.filled}</span>
+                  <span className="text-muted-foreground font-semibold">Empty: {b.empty}</span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+
         <h2 className="font-display text-lg font-bold mb-3">History</h2>
         <div className="space-y-2">
           {timeline.length === 0 && <Card className="p-8 text-center text-sm text-muted-foreground">No activity yet.</Card>}
