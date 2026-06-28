@@ -19,6 +19,9 @@ import "@fontsource/geist/500.css";
 import "@fontsource/geist/600.css";
 import "@fontsource/geist/700.css";
 import { Toaster } from "@/components/ui/sonner";
+import { OfflineIndicator } from "@/components/offline-indicator";
+import { registerPWA } from "@/lib/pwa-register";
+import { startOfflineSync } from "@/lib/offline-queue";
 
 function NotFoundComponent() {
   return (
@@ -129,10 +132,16 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    void registerPWA();
+    startOfflineSync();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <OfflineIndicator />
       <Toaster position="top-center" />
     </QueryClientProvider>
   );
