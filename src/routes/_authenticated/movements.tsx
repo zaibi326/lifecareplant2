@@ -278,6 +278,42 @@ function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
         </div>
       </div>
       <div>
+        <Label className="text-xs">Cylinder Condition</Label>
+        <Select name="condition" defaultValue={type === "receive" ? "empty" : "filled"}>
+          <SelectTrigger className="mt-1.5 h-11"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="filled">Filled</SelectItem>
+            <SelectItem value="empty">Empty</SelectItem>
+            <SelectItem value="unknown">Unknown</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="text-xs">Photos (optional, max 5)</Label>
+        <div className="mt-1.5 grid grid-cols-2 gap-2">
+          <label className="h-11 rounded-md border border-dashed flex items-center justify-center gap-2 text-xs cursor-pointer hover:bg-muted/40">
+            <Camera className="size-4" /> Camera
+            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => addFiles(e.target.files)} />
+          </label>
+          <label className="h-11 rounded-md border border-dashed flex items-center justify-center gap-2 text-xs cursor-pointer hover:bg-muted/40">
+            <Plus className="size-4" /> Upload
+            <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addFiles(e.target.files)} />
+          </label>
+        </div>
+        {photos.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {photos.map((p, i) => (
+              <div key={i} className="relative size-16 rounded-md border overflow-hidden">
+                <img src={URL.createObjectURL(p)} alt="" className="w-full h-full object-cover" />
+                <button type="button" onClick={() => setPhotos((arr) => arr.filter((_, j) => j !== i))} className="absolute top-0.5 right-0.5 size-5 rounded-full bg-black/70 text-white grid place-items-center">
+                  <X className="size-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div>
         <Label className="text-xs">Remarks</Label>
         <Textarea name="remarks" rows={2} className="mt-1.5" />
       </div>
