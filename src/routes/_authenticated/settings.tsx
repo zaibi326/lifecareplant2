@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,16 +40,18 @@ function SettingsPage() {
       </header>
 
       <Tabs defaultValue="company" className="w-full">
-        <TabsList className={`grid ${isAdmin ? "grid-cols-4" : "grid-cols-3"} w-full h-11`}>
+        <TabsList className={`grid ${isAdmin ? "grid-cols-5" : "grid-cols-4"} w-full h-11`}>
           <TabsTrigger value="company" className="gap-2"><Building2 className="size-4" /> Company</TabsTrigger>
           <TabsTrigger value="gases" className="gap-2"><Flame className="size-4" /> Gases</TabsTrigger>
           <TabsTrigger value="sizes" className="gap-2"><Package className="size-4" /> Sizes</TabsTrigger>
+          <TabsTrigger value="permissions" className="gap-2"><ShieldCheck className="size-4" /> Roles</TabsTrigger>
           {isAdmin && <TabsTrigger value="staff" className="gap-2"><Users className="size-4" /> Staff</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="company" className="mt-5"><CompanyForm /></TabsContent>
         <TabsContent value="gases" className="mt-5"><GasTypesPanel /></TabsContent>
         <TabsContent value="sizes" className="mt-5"><SizesPanel /></TabsContent>
+        <TabsContent value="permissions" className="mt-5"><PermissionsMatrix /></TabsContent>
         {isAdmin && <TabsContent value="staff" className="mt-5"><StaffPanel /></TabsContent>}
       </Tabs>
     </div>
@@ -416,5 +418,109 @@ function Field({ label, name, type = "text", defaultValue }: any) {
       <Label className="text-xs">{label}</Label>
       <Input name={name} type={type} defaultValue={defaultValue} className="mt-1.5 h-11" />
     </div>
+  );
+}
+
+function PermissionsMatrix() {
+  const rows: { module: string; actions: { name: string; admin: boolean; staff: boolean }[] }[] = [
+    { module: "Dashboard", actions: [
+      { name: "View KPIs & charts", admin: true, staff: true },
+    ]},
+    { module: "Customers", actions: [
+      { name: "View list & balances", admin: true, staff: true },
+      { name: "Add new customer", admin: true, staff: true },
+      { name: "Edit / delete customer", admin: true, staff: false },
+    ]},
+    { module: "Movements (Receive / Deliver)", actions: [
+      { name: "View entries", admin: true, staff: true },
+      { name: "Record Receive", admin: true, staff: true },
+      { name: "Record Deliver", admin: true, staff: true },
+      { name: "Edit / delete entry", admin: true, staff: false },
+    ]},
+    { module: "Payments", actions: [
+      { name: "View payments", admin: true, staff: true },
+      { name: "Record payment", admin: true, staff: true },
+      { name: "Edit / delete payment", admin: true, staff: false },
+    ]},
+    { module: "Production", actions: [
+      { name: "View logs", admin: true, staff: true },
+      { name: "Log production", admin: true, staff: true },
+      { name: "Edit / delete log", admin: true, staff: false },
+    ]},
+    { module: "Stock", actions: [
+      { name: "View plant & customer stock", admin: true, staff: true },
+    ]},
+    { module: "Reports", actions: [
+      { name: "View reports & charts", admin: true, staff: true },
+      { name: "Export CSV", admin: true, staff: true },
+    ]},
+    { module: "Settings — Company", actions: [
+      { name: "View company info", admin: true, staff: true },
+      { name: "Edit company / currency / tax", admin: true, staff: false },
+    ]},
+    { module: "Settings — Gases & Sizes", actions: [
+      { name: "View", admin: true, staff: true },
+      { name: "Add / edit / delete", admin: true, staff: false },
+    ]},
+    { module: "Settings — Staff Management", actions: [
+      { name: "View staff list", admin: true, staff: false },
+      { name: "Add / remove user", admin: true, staff: false },
+      { name: "Change role", admin: true, staff: false },
+      { name: "Reset password", admin: true, staff: false },
+    ]},
+  ];
+
+  return (
+    <Card className="p-5 space-y-4">
+      <div>
+        <h3 className="font-display font-bold flex items-center gap-2"><ShieldCheck className="size-4 text-brand" /> Role Permissions</h3>
+        <p className="text-xs text-muted-foreground mt-1">What each role can do in every module.</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2 text-xs">
+        <Badge className="bg-brand text-brand-foreground gap-1"><ShieldCheck className="size-3" /> Admin — full access</Badge>
+        <Badge variant="secondary" className="gap-1"><Users className="size-3" /> Staff — daily operations</Badge>
+      </div>
+
+      <div className="overflow-x-auto -mx-5">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b">
+              <th className="py-2 px-5 font-medium">Module / Action</th>
+              <th className="py-2 px-3 font-medium text-center w-20">Admin</th>
+              <th className="py-2 px-5 font-medium text-center w-20">Staff</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <Fragment key={r.module}>
+                <tr className="bg-muted/40">
+                  <td colSpan={3} className="py-2 px-5 font-display font-bold text-xs uppercase tracking-wider">{r.module}</td>
+                </tr>
+                {r.actions.map((a, i) => (
+                  <tr key={r.module + i} className="border-b last:border-0">
+                    <td className="py-2.5 px-5">{a.name}</td>
+                    <td className="py-2.5 px-3 text-center">
+                      {a.admin
+                        ? <span className="inline-flex size-6 rounded-full bg-success/15 text-success items-center justify-center">✓</span>
+                        : <span className="inline-flex size-6 rounded-full bg-muted text-muted-foreground items-center justify-center">–</span>}
+                    </td>
+                    <td className="py-2.5 px-5 text-center">
+                      {a.staff
+                        ? <span className="inline-flex size-6 rounded-full bg-success/15 text-success items-center justify-center">✓</span>
+                        : <span className="inline-flex size-6 rounded-full bg-destructive/10 text-destructive items-center justify-center">✕</span>}
+                    </td>
+                  </tr>
+                ))}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground">
+        Note: Roles are enforced by Lovable Cloud security policies. To change a user's role, go to the <strong>Staff</strong> tab (admin only).
+      </p>
+    </Card>
   );
 }
