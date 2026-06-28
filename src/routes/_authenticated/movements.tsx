@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowDownToLine, ArrowUpFromLine, Plus, Search, Camera, Printer, X } from "lucide-react";
 import { toast } from "sonner";
 import { printHTML } from "@/lib/print";
+import { enqueue } from "@/lib/offline-queue";
 
 type MovType = "receive" | "deliver";
 
@@ -176,16 +177,10 @@ function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
   const save = useMutation({
     mutationFn: async (f: FormData) => {
       if (!customer || !gas || !size || !qty) throw new Error("Customer, gas, size, qty required");
-      const photo_urls: string[] = [];
-      for (const file of photos) {
-        const path = `${customer}/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, "_")}`;
-        const up = await supabase.storage.from("movement-photos").upload(path, file, { upsert: false });
-        if (up.error) throw up.error;
-        const { data: signed } = await supabase.storage.from("movement-photos").createSignedUrl(path, 60 * 60 * 24 * 365);
-        if (signed?.signedUrl) photo_urls.push(signed.signedUrl);
-      }
       const cond = String(f.get("condition") ?? "") as any;
-      const { error } = await supabase.from("cylinder_movements").insert({
+      const offline = typeof navigator !== "undefined" && !navigator.onLine;
+
+      const basePayload = {
         type,
         customer_id: customer,
         gas_type_id: gas,
@@ -198,12 +193,41 @@ function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
         driver_name: String(f.get("driver_name") ?? "").trim() || null,
         condition: cond || (type === "receive" ? "empty" : "filled"),
         remarks: String(f.get("remarks") ?? "").trim() || null,
+      };
+
+      if (offline) {
+        await enqueue({
+          table: "cylinder_movements",
+          payload: { ...basePayload, photo_urls: null },
+          label: `${type} ${qty} cyl`,
+        });
+        if (photos.length > 0) {
+          toast.message("Saved offline — photos skipped (require connection)");
+        }
+        return { queued: true };
+      }
+
+      const photo_urls: string[] = [];
+      for (const file of photos) {
+        const path = `${customer}/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, "_")}`;
+        const up = await supabase.storage.from("movement-photos").upload(path, file, { upsert: false });
+        if (up.error) throw up.error;
+        const { data: signed } = await supabase.storage.from("movement-photos").createSignedUrl(path, 60 * 60 * 24 * 365);
+        if (signed?.signedUrl) photo_urls.push(signed.signedUrl);
+      }
+      const { error } = await supabase.from("cylinder_movements").insert({
+        ...basePayload,
         photo_urls: photo_urls.length ? photo_urls : null,
       });
       if (error) throw error;
+      return { queued: false };
     },
-    onSuccess: () => {
-      toast.success(type === "receive" ? "Receive recorded" : "Delivery recorded");
+    onSuccess: (res) => {
+      if (res?.queued) {
+        toast.success("Saved offline — will sync when online");
+      } else {
+        toast.success(type === "receive" ? "Receive recorded" : "Delivery recorded");
+      }
       qc.invalidateQueries();
       onDone();
     },
