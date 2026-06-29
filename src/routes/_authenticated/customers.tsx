@@ -51,12 +51,13 @@ function CustomersPage() {
   const { data } = useQuery({
     queryKey: ["customers-with-balance"],
     queryFn: async () => {
-      const [{ data: cs }, { data: ms }, { data: ps }, { data: obs }, { data: szs }] = await Promise.all([
+      const [{ data: cs }, { data: ms }, { data: ps }, { data: obs }, { data: szs }, { data: gts }] = await Promise.all([
         supabase.from("customers").select("*").order("name"),
-        supabase.from("cylinder_movements").select("customer_id,type,quantity,total_amount,cylinder_size_id"),
+        supabase.from("cylinder_movements").select("customer_id,type,quantity,total_amount,cylinder_size_id,gas_type_id"),
         supabase.from("payments").select("customer_id,amount"),
-        supabase.from("customer_opening_balances").select("customer_id,quantity,condition,cylinder_size_id"),
+        supabase.from("customer_opening_balances").select("customer_id,quantity,condition,cylinder_size_id,gas_type_id"),
         supabase.from("cylinder_sizes").select("id,name").order("name"),
+        supabase.from("gas_types").select("id,name").order("name"),
       ]);
       const openSum = new Map<string, number>();
       (obs ?? []).forEach((o: any) => {
@@ -86,28 +87,34 @@ function CustomersPage() {
         e.due -= Number(p.amount ?? 0);
       });
 
-      // Per-size breakdown across all customers (opening + received − delivered)
-      const sizeMap = new Map<string, { opening: number; received: number; delivered: number }>();
-      const ensure = (id: string) => {
-        let v = sizeMap.get(id);
-        if (!v) { v = { opening: 0, received: 0, delivered: 0 }; sizeMap.set(id, v); }
+      // Per gas+size breakdown (opening + received − delivered)
+      const sizeNames = new Map<string, string>((szs ?? []).map((s: any) => [s.id, s.name]));
+      const gasNames = new Map<string, string>((gts ?? []).map((g: any) => [g.id, g.name]));
+      const comboMap = new Map<string, { gas: string; size: string; opening: number; received: number; delivered: number }>();
+      const ensure = (gid: string, sid: string) => {
+        const key = `${gid}::${sid}`;
+        let v = comboMap.get(key);
+        if (!v) {
+          v = { gas: gasNames.get(gid) ?? "—", size: sizeNames.get(sid) ?? "—", opening: 0, received: 0, delivered: 0 };
+          comboMap.set(key, v);
+        }
         return v;
       };
       (obs ?? []).forEach((o: any) => {
-        if (!o.cylinder_size_id) return;
-        ensure(o.cylinder_size_id).opening += Number(o.quantity ?? 0);
+        if (!o.cylinder_size_id || !o.gas_type_id) return;
+        ensure(o.gas_type_id, o.cylinder_size_id).opening += Number(o.quantity ?? 0);
       });
       (ms ?? []).forEach((m: any) => {
-        if (!m.cylinder_size_id) return;
+        if (!m.cylinder_size_id || !m.gas_type_id) return;
         const qty = Number(m.quantity ?? 0);
-        const v = ensure(m.cylinder_size_id);
+        const v = ensure(m.gas_type_id, m.cylinder_size_id);
         if (m.type === "deliver") v.delivered += qty;
         else v.received += qty;
       });
-      const sizeBreakdown = (szs ?? []).map((s: any) => {
-        const v = sizeMap.get(s.id) ?? { opening: 0, received: 0, delivered: 0 };
-        return { name: s.name, ...v, qty: v.opening + v.received - v.delivered };
-      });
+      const sizeBreakdown = Array.from(comboMap.values())
+        .map((v) => ({ name: `${v.gas} • ${v.size}`, ...v, qty: v.opening + v.received - v.delivered }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
 
 
       return { rows: (cs ?? []).map((c) => ({ ...c, balance: map.get(c.id)! })), sizeBreakdown };
