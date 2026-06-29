@@ -51,11 +51,12 @@ function CustomersPage() {
   const { data } = useQuery({
     queryKey: ["customers-with-balance"],
     queryFn: async () => {
-      const [{ data: cs }, { data: ms }, { data: ps }, { data: obs }] = await Promise.all([
+      const [{ data: cs }, { data: ms }, { data: ps }, { data: obs }, { data: szs }] = await Promise.all([
         supabase.from("customers").select("*").order("name"),
-        supabase.from("cylinder_movements").select("customer_id,type,quantity,total_amount"),
+        supabase.from("cylinder_movements").select("customer_id,type,quantity,total_amount,cylinder_size_id"),
         supabase.from("payments").select("customer_id,amount"),
-        supabase.from("customer_opening_balances").select("customer_id,quantity,condition"),
+        supabase.from("customer_opening_balances").select("customer_id,quantity,condition,cylinder_size_id"),
+        supabase.from("cylinder_sizes").select("id,name").order("name"),
       ]);
       const openSum = new Map<string, number>();
       (obs ?? []).forEach((o: any) => {
@@ -79,7 +80,22 @@ function CustomersPage() {
         if (!e) return;
         e.due -= Number(p.amount ?? 0);
       });
-      return (cs ?? []).map((c) => ({ ...c, balance: map.get(c.id)! }));
+
+      // Per-size breakdown across all customers (opening + delivered − received)
+      const sizeMap = new Map<string, number>();
+      (obs ?? []).forEach((o: any) => {
+        if (!o.cylinder_size_id) return;
+        sizeMap.set(o.cylinder_size_id, (sizeMap.get(o.cylinder_size_id) ?? 0) + Number(o.quantity ?? 0));
+      });
+      (ms ?? []).forEach((m: any) => {
+        if (!m.cylinder_size_id) return;
+        const cur = sizeMap.get(m.cylinder_size_id) ?? 0;
+        const q = Number(m.quantity ?? 0);
+        sizeMap.set(m.cylinder_size_id, cur + (m.type === "deliver" ? q : -q));
+      });
+      const sizeBreakdown = (szs ?? []).map((s: any) => ({ name: s.name, qty: sizeMap.get(s.id) ?? 0 }));
+
+      return { rows: (cs ?? []).map((c) => ({ ...c, balance: map.get(c.id)! })), sizeBreakdown };
     },
   });
 
