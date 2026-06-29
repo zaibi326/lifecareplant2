@@ -384,6 +384,13 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
         return { queued: true };
       }
 
+      // Share a single invoice number across all lines of one delivery
+      if (type === "deliver" && payloads.length > 0) {
+        const { data: invNum, error: invErr } = await supabase.rpc("next_invoice_number");
+        if (invErr) throw invErr;
+        if (invNum) payloads.forEach((p: any) => { p.invoice_number = invNum as string; });
+      }
+
       const { error } = await supabase.from("cylinder_movements").insert(payloads);
       if (error) throw error;
       return { queued: false };
