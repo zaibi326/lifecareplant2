@@ -294,8 +294,17 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
       const ecr_number = type === "deliver" ? (ecrNumber.trim() || null) : null;
       const extrasClean = type === "deliver"
         ? extras
-            .map((e) => ({ name: String(e.name || "").trim(), price: e.price === "" ? null : Number(e.price) || 0 }))
-            .filter((e) => e.name.length > 0)
+            .map((e) => {
+              const name = String(e.name || "").trim();
+              const size = isSized(name) && e.size ? String(e.size) : null;
+              return {
+                name,
+                price: e.price === "" ? null : Number(e.price) || 0,
+                size,
+                kind: name === "Valve" ? "valve" : name === "Spindle" ? "spindle" : null,
+              };
+            })
+            .filter((e) => e.name.length > 0 && (!isSized(e.name) || e.size))
         : [];
 
       const photo_urls: string[] = [];
