@@ -254,6 +254,7 @@ function CompanyForm() {
       invoice_prefix: String(f.get("invoice_prefix") ?? "").trim() || null,
       invoice_footer: String(f.get("invoice_footer") ?? "").trim() || null,
       tax_percent: Number(f.get("tax_percent") ?? 0),
+      plant_opening_stock: Math.max(0, Number(f.get("plant_opening_stock") ?? 0) || 0),
     });
   };
 
