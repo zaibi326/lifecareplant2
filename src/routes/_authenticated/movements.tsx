@@ -66,9 +66,22 @@ function MovementsPage() {
     );
   }, [data, q]);
 
+  // Group delivery rows by shared invoice_number (one bill per delivery)
+  const groups = useMemo(() => {
+    if (type !== "deliver") return (filtered as any[]).map((m) => ({ key: m.id, rows: [m] }));
+    const map = new Map<string, any[]>();
+    const out: { key: string; rows: any[] }[] = [];
+    (filtered as any[]).forEach((m) => {
+      const key = m.invoice_number ? `inv:${m.invoice_number}` : `id:${m.id}`;
+      if (!map.has(key)) { map.set(key, []); out.push({ key, rows: map.get(key)! }); }
+      map.get(key)!.push(m);
+    });
+    return out;
+  }, [filtered, type]);
+
   const del = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("cylinder_movements").delete().eq("id", id);
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from("cylinder_movements").delete().in("id", ids);
       if (error) throw error;
     },
     onSuccess: () => {
