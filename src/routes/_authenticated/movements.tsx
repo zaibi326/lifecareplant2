@@ -237,7 +237,7 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
         }))
       : [],
   );
-  const addExtra = () => setExtras((r) => [...r, { name: EXTRA_PRESETS[0], price: "", size: PART_SIZES[0] }]);
+  const addExtra = () => setExtras((r) => [...r, { name: EXTRA_PRESETS[0], price: "", size: partSizes[0] }]);
   const updExtra = (i: number, patch: Partial<ExtraRow>) =>
     setExtras((r) => r.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
   const delExtra = (i: number) => setExtras((r) => r.filter((_, idx) => idx !== i));
@@ -486,7 +486,7 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
                 <div className="grid grid-cols-[1fr_1fr_90px_auto] gap-1.5 items-center">
                   <Select
                     value={EXTRA_PRESETS.includes(e.name) ? e.name : "Other"}
-                    onValueChange={(v) => updExtra(i, { name: v === "Other" ? "" : v, size: v === "Valve" || v === "Spindle" ? (e.size ?? PART_SIZES[0]) : undefined })}
+                    onValueChange={(v) => updExtra(i, { name: v === "Other" ? "" : v, size: v === "Valve" || v === "Spindle" ? (e.size ?? partSizes[0]) : undefined })}
                   >
                     <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Item" /></SelectTrigger>
                     <SelectContent>
@@ -514,10 +514,10 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
                 {sized && (
                   <div className="grid grid-cols-[80px_1fr] gap-1.5 items-center">
                     <Label className="text-[11px] text-muted-foreground">Size</Label>
-                    <Select value={e.size ?? PART_SIZES[0]} onValueChange={(v) => updExtra(i, { size: v })}>
+                    <Select value={e.size ?? partSizes[0]} onValueChange={(v) => updExtra(i, { size: v })}>
                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Size" /></SelectTrigger>
                       <SelectContent>
-                        {PART_SIZES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        {partSizes.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
