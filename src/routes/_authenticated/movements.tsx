@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatDate, todayISO } from "@/lib/format";
 import { Card } from "@/components/ui/card";
@@ -11,12 +11,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { ArrowDownToLine, ArrowUpFromLine, Plus, Search, Camera, Printer, X } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ArrowDownToLine, ArrowUpFromLine, Plus, Search, Camera, Printer, X, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { printHTML } from "@/lib/print";
 import { enqueue } from "@/lib/offline-queue";
 
 type MovType = "receive" | "deliver";
+type LineRow = { gas_type_id: string; cylinder_size_id: string; quantity: number; rate: number };
 
 export const Route = createFileRoute("/_authenticated/movements")({
   validateSearch: (s: Record<string, unknown>) => ({ type: ((s.type as MovType) ?? "receive") as MovType }),
@@ -27,7 +33,10 @@ export const Route = createFileRoute("/_authenticated/movements")({
 function MovementsPage() {
   const { type } = Route.useSearch();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [q, setQ] = useState("");
 
   const { data, isLoading } = useQuery({
@@ -38,7 +47,7 @@ function MovementsPage() {
         .select("*,customers(name),gas_types(name,color),cylinder_sizes(name)")
         .eq("type", type)
         .order("created_at", { ascending: false })
-        .limit(100);
+        .limit(200);
       return data ?? [];
     },
   });
@@ -53,8 +62,24 @@ function MovementsPage() {
     );
   }, [data, q]);
 
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("cylinder_movements").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Entry deleted");
+      qc.invalidateQueries();
+      setDeleteId(null);
+    },
+    onError: (e: any) => { toast.error(e.message); setDeleteId(null); },
+  });
+
   const Icon = type === "receive" ? ArrowDownToLine : ArrowUpFromLine;
   const tone = type === "receive" ? "bg-brand text-brand-foreground" : "bg-primary text-primary-foreground";
+
+  const openNew = () => { setEditing(null); setOpen(true); };
+  const openEdit = (m: any) => { setEditing(m); setOpen(true); };
 
   return (
     <div className="space-y-5">
@@ -67,13 +92,19 @@ function MovementsPage() {
             {type === "receive" ? "Empties received from customers." : "Filled cylinders sent to customers."}
           </p>
         </div>
-        <Sheet open={open} onOpenChange={setOpen}>
+        <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
           <SheetTrigger asChild>
-            <Button className={`gap-2 ${tone}`}><Plus className="size-4" /> New Entry</Button>
+            <Button className={`gap-2 ${tone}`} onClick={openNew}><Plus className="size-4" /> New Entry</Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-            <SheetHeader><SheetTitle>{type === "receive" ? "Receive" : "Deliver"} Cylinders</SheetTitle></SheetHeader>
-            <MovementForm type={type} onDone={() => setOpen(false)} />
+          <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>{editing ? "Edit" : type === "receive" ? "Receive" : "Deliver"} Cylinders</SheetTitle>
+            </SheetHeader>
+            <MovementForm
+              type={type}
+              editing={editing}
+              onDone={() => { setOpen(false); setEditing(null); }}
+            />
           </SheetContent>
         </Sheet>
       </header>
@@ -116,9 +147,35 @@ function MovementsPage() {
                 </Button>
               )}
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="size-9 shrink-0"><MoreVertical className="size-4" /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => openEdit(m)} className="gap-2"><Pencil className="size-4" /> Edit</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDeleteId(m.id)} className="gap-2 text-destructive focus:text-destructive">
+                  <Trash2 className="size-4" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </Card>
         ))}
       </div>
+
+      <AlertDialog open={!!deleteId} onOpenChange={(v) => !v && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete entry?</AlertDialogTitle>
+            <AlertDialogDescription>Ye action permanent hai. Stock aur balances update ho jaein gy.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && del.mutate(deleteId)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {del.isPending ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -149,14 +206,22 @@ async function printInvoice(m: any) {
   `);
 }
 
-function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
+function MovementForm({ type, editing, onDone }: { type: MovType; editing: any | null; onDone: () => void }) {
   const qc = useQueryClient();
-  const [customer, setCustomer] = useState("");
-  const [gas, setGas] = useState("");
-  const [size, setSize] = useState("");
-  const [qty, setQty] = useState("");
-  const [rate, setRate] = useState("");
-  const [date, setDate] = useState(todayISO());
+  const isEdit = !!editing;
+  const [customer, setCustomer] = useState(editing?.customer_id ?? "");
+  const [date, setDate] = useState(editing?.date ?? todayISO());
+  const [lines, setLines] = useState<LineRow[]>(
+    isEdit
+      ? [{
+          gas_type_id: editing.gas_type_id,
+          cylinder_size_id: editing.cylinder_size_id,
+          quantity: Number(editing.quantity ?? 1),
+          rate: Number(editing.rate ?? 0),
+        }]
+      : [],
+  );
+  const [photos, setPhotos] = useState<File[]>([]);
 
   const { data: lookups } = useQuery({
     queryKey: ["movement-lookups"],
@@ -170,64 +235,101 @@ function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
     },
   });
 
-  const [photos, setPhotos] = useState<File[]>([]);
+  useEffect(() => {
+    if (!isEdit && lines.length === 0 && lookups?.gases?.length && lookups?.sizes?.length) {
+      setLines([{ gas_type_id: lookups.gases[0].id, cylinder_size_id: lookups.sizes[0].id, quantity: 1, rate: 0 }]);
+    }
+  }, [lookups, isEdit, lines.length]);
 
-  const total = type === "deliver" ? Number(qty || 0) * Number(rate || 0) : null;
+  const addLine = () =>
+    setLines((r) => [...r, {
+      gas_type_id: lookups?.gases[0]?.id ?? "",
+      cylinder_size_id: lookups?.sizes[0]?.id ?? "",
+      quantity: 1,
+      rate: 0,
+    }]);
+  const updLine = (i: number, patch: Partial<LineRow>) =>
+    setLines((r) => r.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  const delLine = (i: number) => setLines((r) => r.filter((_, idx) => idx !== i));
+
+  const grandTotal = type === "deliver"
+    ? lines.reduce((a, l) => a + Number(l.quantity || 0) * Number(l.rate || 0), 0)
+    : 0;
 
   const save = useMutation({
     mutationFn: async (f: FormData) => {
-      if (!customer || !gas || !size || !qty) throw new Error("Customer, gas, size, qty required");
+      if (!customer) throw new Error("Customer required");
+      const valid = lines.filter((l) => l.gas_type_id && l.cylinder_size_id && Number(l.quantity) > 0);
+      if (valid.length === 0) throw new Error("At least one line item required");
       const cond = String(f.get("condition") ?? "") as any;
+      const vehicle_number = String(f.get("vehicle_number") ?? "").trim() || null;
+      const driver_name = String(f.get("driver_name") ?? "").trim() || null;
+      const remarks = String(f.get("remarks") ?? "").trim() || null;
+      const condition = cond || (type === "receive" ? "empty" : "filled");
       const offline = typeof navigator !== "undefined" && !navigator.onLine;
 
-      const basePayload = {
+      const photo_urls: string[] = [];
+      if (!offline && photos.length > 0) {
+        for (const file of photos) {
+          const path = `${customer}/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, "_")}`;
+          const up = await supabase.storage.from("movement-photos").upload(path, file, { upsert: false });
+          if (up.error) throw up.error;
+          const { data: signed } = await supabase.storage.from("movement-photos").createSignedUrl(path, 60 * 60 * 24 * 365);
+          if (signed?.signedUrl) photo_urls.push(signed.signedUrl);
+        }
+      }
+
+      if (isEdit) {
+        const l = valid[0];
+        const { error } = await supabase.from("cylinder_movements").update({
+          customer_id: customer,
+          gas_type_id: l.gas_type_id,
+          cylinder_size_id: l.cylinder_size_id,
+          quantity: Number(l.quantity),
+          rate: type === "deliver" ? Number(l.rate || 0) : null,
+          total_amount: type === "deliver" ? Number(l.quantity) * Number(l.rate || 0) : null,
+          date,
+          vehicle_number,
+          driver_name,
+          condition,
+          remarks,
+          ...(photo_urls.length ? { photo_urls } : {}),
+        }).eq("id", editing.id);
+        if (error) throw error;
+        return { queued: false };
+      }
+
+      const payloads = valid.map((l) => ({
         type,
         customer_id: customer,
-        gas_type_id: gas,
-        cylinder_size_id: size,
-        quantity: Number(qty),
-        rate: type === "deliver" ? Number(rate || 0) : null,
-        total_amount: total,
+        gas_type_id: l.gas_type_id,
+        cylinder_size_id: l.cylinder_size_id,
+        quantity: Number(l.quantity),
+        rate: type === "deliver" ? Number(l.rate || 0) : null,
+        total_amount: type === "deliver" ? Number(l.quantity) * Number(l.rate || 0) : null,
         date,
-        vehicle_number: String(f.get("vehicle_number") ?? "").trim() || null,
-        driver_name: String(f.get("driver_name") ?? "").trim() || null,
-        condition: cond || (type === "receive" ? "empty" : "filled"),
-        remarks: String(f.get("remarks") ?? "").trim() || null,
-      };
+        vehicle_number,
+        driver_name,
+        condition,
+        remarks,
+        photo_urls: photo_urls.length ? photo_urls : null,
+      }));
 
       if (offline) {
-        await enqueue({
-          table: "cylinder_movements",
-          payload: { ...basePayload, photo_urls: null },
-          label: `${type} ${qty} cyl`,
-        });
-        if (photos.length > 0) {
-          toast.message("Saved offline — photos skipped (require connection)");
+        for (const p of payloads) {
+          await enqueue({ table: "cylinder_movements", payload: p, label: `${type} ${p.quantity} cyl` });
         }
+        if (photos.length > 0) toast.message("Saved offline — photos skipped (require connection)");
         return { queued: true };
       }
 
-      const photo_urls: string[] = [];
-      for (const file of photos) {
-        const path = `${customer}/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, "_")}`;
-        const up = await supabase.storage.from("movement-photos").upload(path, file, { upsert: false });
-        if (up.error) throw up.error;
-        const { data: signed } = await supabase.storage.from("movement-photos").createSignedUrl(path, 60 * 60 * 24 * 365);
-        if (signed?.signedUrl) photo_urls.push(signed.signedUrl);
-      }
-      const { error } = await supabase.from("cylinder_movements").insert({
-        ...basePayload,
-        photo_urls: photo_urls.length ? photo_urls : null,
-      });
+      const { error } = await supabase.from("cylinder_movements").insert(payloads);
       if (error) throw error;
       return { queued: false };
     },
     onSuccess: (res) => {
-      if (res?.queued) {
-        toast.success("Saved offline — will sync when online");
-      } else {
-        toast.success(type === "receive" ? "Receive recorded" : "Delivery recorded");
-      }
+      if (res?.queued) toast.success("Saved offline — will sync when online");
+      else toast.success(isEdit ? "Entry updated" : type === "receive" ? "Receive recorded" : "Delivery recorded");
       qc.invalidateQueries();
       onDone();
     },
@@ -253,65 +355,89 @@ function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
           <SelectContent>{lookups?.customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
         </Select>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label className="text-xs">Gas*</Label>
-          <Select value={gas} onValueChange={setGas}>
-            <SelectTrigger className="mt-1.5 h-11"><SelectValue placeholder="Gas" /></SelectTrigger>
-            <SelectContent>{lookups?.gases.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}</SelectContent>
-          </Select>
+
+      <div className="rounded-lg border p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-semibold">Line Items {isEdit && <span className="text-muted-foreground font-normal">(edit mode — single item)</span>}</Label>
+          {!isEdit && (
+            <Button type="button" size="sm" variant="outline" onClick={addLine} className="h-8 gap-1">
+              <Plus className="size-3.5" /> Add
+            </Button>
+          )}
         </div>
-        <div>
-          <Label className="text-xs">Size*</Label>
-          <Select value={size} onValueChange={setSize}>
-            <SelectTrigger className="mt-1.5 h-11"><SelectValue placeholder="Size" /></SelectTrigger>
-            <SelectContent>{lookups?.sizes.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
+        {lines.length === 0 && (
+          <p className="text-xs text-muted-foreground">Aik ya zyada gas + size + qty add karein.</p>
+        )}
+        {lines.map((r, i) => (
+          <div key={i} className="space-y-1.5 rounded-md bg-muted/30 p-2">
+            <div className={`grid ${type === "deliver" ? "grid-cols-[1fr_1fr_70px_80px_auto]" : "grid-cols-[1fr_1fr_70px_auto]"} gap-1.5 items-center`}>
+              <Select value={r.gas_type_id} onValueChange={(v) => updLine(i, { gas_type_id: v })}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Gas" /></SelectTrigger>
+                <SelectContent>
+                  {(lookups?.gases ?? []).map((g: any) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={r.cylinder_size_id} onValueChange={(v) => updLine(i, { cylinder_size_id: v })}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Size" /></SelectTrigger>
+                <SelectContent>
+                  {(lookups?.sizes ?? []).map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Input type="number" min={1} value={r.quantity} onChange={(e) => updLine(i, { quantity: Number(e.target.value) })} placeholder="Qty" className="h-9 text-xs" />
+              {type === "deliver" && (
+                <Input type="number" min={0} value={r.rate} onChange={(e) => updLine(i, { rate: Number(e.target.value) })} placeholder="Rate" className="h-9 text-xs" />
+              )}
+              {!isEdit && lines.length > 1 ? (
+                <Button type="button" size="icon" variant="ghost" onClick={() => delLine(i)} className="size-9">
+                  <Trash2 className="size-4 text-destructive" />
+                </Button>
+              ) : (
+                <div className="size-9" />
+              )}
+            </div>
+            {type === "deliver" && (
+              <div className="text-[11px] text-muted-foreground text-right">
+                Line total: <span className="font-semibold text-foreground">{formatCurrency(Number(r.quantity || 0) * Number(r.rate || 0))}</span>
+              </div>
+            )}
+          </div>
+        ))}
+        {type === "deliver" && lines.length > 0 && (
+          <div className="flex items-center justify-between border-t pt-2 mt-2">
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">Grand Total</span>
+            <span className="font-display font-bold text-lg">{formatCurrency(grandTotal)}</span>
+          </div>
+        )}
       </div>
+
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label className="text-xs">Quantity*</Label>
-          <Input type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} className="mt-1.5 h-11" required />
-        </div>
         <div>
           <Label className="text-xs">Date</Label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1.5 h-11" />
         </div>
-      </div>
-      {type === "deliver" && (
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs">Rate (Rs / cyl)</Label>
-            <Input type="number" min={0} value={rate} onChange={(e) => setRate(e.target.value)} className="mt-1.5 h-11" />
-          </div>
-          <div>
-            <Label className="text-xs">Total</Label>
-            <Input value={formatCurrency(total ?? 0)} readOnly className="mt-1.5 h-11 bg-muted font-semibold" />
-          </div>
-        </div>
-      )}
-      <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-xs">Vehicle #</Label>
-          <Input name="vehicle_number" className="mt-1.5 h-11" />
+          <Input name="vehicle_number" defaultValue={editing?.vehicle_number ?? ""} className="mt-1.5 h-11" />
         </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-xs">Driver</Label>
-          <Input name="driver_name" className="mt-1.5 h-11" />
+          <Input name="driver_name" defaultValue={editing?.driver_name ?? ""} className="mt-1.5 h-11" />
+        </div>
+        <div>
+          <Label className="text-xs">Cylinder Condition</Label>
+          <Select name="condition" defaultValue={editing?.condition ?? (type === "receive" ? "empty" : "filled")}>
+            <SelectTrigger className="mt-1.5 h-11"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="filled">Filled</SelectItem>
+              <SelectItem value="empty">Empty</SelectItem>
+              <SelectItem value="unknown">Unknown</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
-      <div>
-        <Label className="text-xs">Cylinder Condition</Label>
-        <Select name="condition" defaultValue={type === "receive" ? "empty" : "filled"}>
-          <SelectTrigger className="mt-1.5 h-11"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="filled">Filled</SelectItem>
-            <SelectItem value="empty">Empty</SelectItem>
-            <SelectItem value="unknown">Unknown</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+
       <div>
         <Label className="text-xs">Photos (optional, max 5)</Label>
         <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -339,10 +465,10 @@ function MovementForm({ type, onDone }: { type: MovType; onDone: () => void }) {
       </div>
       <div>
         <Label className="text-xs">Remarks</Label>
-        <Textarea name="remarks" rows={2} className="mt-1.5" />
+        <Textarea name="remarks" rows={2} defaultValue={editing?.remarks ?? ""} className="mt-1.5" />
       </div>
       <Button type="submit" disabled={save.isPending} className="w-full h-11">
-        {save.isPending ? "Saving…" : type === "receive" ? "Record Receive" : "Record Delivery"}
+        {save.isPending ? "Saving…" : isEdit ? "Update Entry" : type === "receive" ? "Record Receive" : "Record Delivery"}
       </Button>
     </form>
   );
