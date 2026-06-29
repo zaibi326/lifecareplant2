@@ -1,6 +1,7 @@
 {
-  "name": "Life Care Plant — Gas Cylinder Plant Management",
+  "name": "Life Care Plant — Powered by Braintech Automation",
   "short_name": "Life Care Plant",
+  "description": "Life Care Plant — Powered by Braintech Automation",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0f172a",
