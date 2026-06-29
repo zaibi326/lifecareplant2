@@ -188,16 +188,23 @@ function CustomersPage() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
+      // Cascade: pehle related records hatao
+      const r1 = await supabase.from("cylinder_movements").delete().eq("customer_id", id);
+      if (r1.error) throw r1.error;
+      const r2 = await supabase.from("payments").delete().eq("customer_id", id);
+      if (r2.error) throw r2.error;
+      const r3 = await supabase.from("customer_opening_balances").delete().eq("customer_id", id);
+      if (r3.error) throw r3.error;
       const { error } = await supabase.from("customers").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Customer deleted");
-      qc.invalidateQueries({ queryKey: ["customers-with-balance"] });
+      toast.success("Customer aur related records deleted");
+      qc.invalidateQueries();
       setDeleteId(null);
     },
     onError: (e: any) => {
-      toast.error(e.message?.includes("foreign key") ? "Pehle is customer ke movements/payments delete karein." : e.message);
+      toast.error(e.message);
       setDeleteId(null);
     },
   });
@@ -394,7 +401,7 @@ function CustomersPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete customer?</AlertDialogTitle>
             <AlertDialogDescription>
-              Ye action permanent hai. Agar customer ki movements ya payments mojood hon to delete nahi hoga — pehle wo records hatayein.
+              Ye action permanent hai. Customer ke saath uski tamam movements, payments, aur opening balances bhi delete ho jaein gy.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
