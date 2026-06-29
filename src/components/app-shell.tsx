@@ -53,7 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div>
             <div className="font-display font-bold tracking-tight">Life Care Plant</div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Plant management</div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Powered by Braintech Automation</div>
           </div>
         </div>
         <nav className="flex-1 p-3 space-y-1">
