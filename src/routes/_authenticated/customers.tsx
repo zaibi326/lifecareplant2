@@ -112,9 +112,10 @@ function CustomersPage() {
   }, [editing]);
 
   const filtered = useMemo(() => {
+    const rows = data?.rows ?? [];
     const s = q.trim().toLowerCase();
-    if (!s) return data ?? [];
-    return (data ?? []).filter((c: any) => c.name.toLowerCase().includes(s) || (c.phone ?? "").includes(s));
+    if (!s) return rows;
+    return rows.filter((c: any) => c.name.toLowerCase().includes(s) || (c.phone ?? "").includes(s));
   }, [data, q]);
 
   const totals = useMemo(() => {
