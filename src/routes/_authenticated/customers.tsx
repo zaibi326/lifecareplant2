@@ -379,13 +379,14 @@ function Field({ label, name, type = "text", required, defaultValue, placeholder
   );
 }
 
-function Stat({ icon: Icon, label, value, tone }: any) {
+function Stat({ icon: Icon, label, value, tone, hint }: any) {
   const toneCls = tone === "brand" ? "bg-brand/10 text-brand" : tone === "warn" ? "bg-warning/15 text-warning" : "bg-muted text-foreground";
   return (
-    <Card className="p-3">
+    <Card className="p-3 h-full">
       <div className={`size-8 rounded-lg grid place-items-center ${toneCls}`}><Icon className="size-4" /></div>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-2">{label}</div>
       <div className="font-display font-bold text-lg mt-0.5 truncate">{value}</div>
+      {hint && <div className="text-[9px] text-brand mt-0.5">{hint}</div>}
     </Card>
   );
 }
