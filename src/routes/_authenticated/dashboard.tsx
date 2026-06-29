@@ -133,6 +133,29 @@ function Dashboard() {
         <Kpi label="Total Customers" value={(data?.customers.length ?? 0).toString()} sub="Active" tone="default" />
       </section>
 
+      <section className="bg-card border rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="font-display font-bold">Cylinders with Parties</h2>
+            <p className="text-xs text-muted-foreground">Plant ke cylinder jo abhi parties ke paas hain</p>
+          </div>
+          <Link to="/customers" className="text-xs text-brand font-medium">View all</Link>
+        </div>
+        {partyBalances.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-3">Koi cylinder party ke paas nahi.</p>
+        ) : (
+          <div className="divide-y">
+            {partyBalances.slice(0, 8).map((p, i) => (
+              <div key={i} className="py-2.5 flex items-center justify-between">
+                <span className="text-sm font-medium truncate">{p.name}</span>
+                <span className="font-display font-bold text-brand">{p.out}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+
       <section className="grid grid-cols-2 gap-3 md:hidden">
         <Link to="/movements" search={{ type: "receive" } as any} className="flex flex-col items-center justify-center gap-2 bg-brand text-brand-foreground p-6 rounded-3xl shadow-lg shadow-brand/20 active:scale-95 transition-transform">
           <div className="size-10 rounded-full bg-white/20 grid place-items-center"><ArrowDownToLine className="size-5" /></div>
