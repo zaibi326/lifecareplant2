@@ -40,10 +40,11 @@ function SettingsPage() {
       </header>
 
       <Tabs defaultValue="company" className="w-full">
-        <TabsList className={`grid ${isAdmin ? "grid-cols-5" : "grid-cols-4"} w-full h-11`}>
+        <TabsList className={`grid ${isAdmin ? "grid-cols-6" : "grid-cols-5"} w-full h-11`}>
           <TabsTrigger value="company" className="gap-2"><Building2 className="size-4" /> Company</TabsTrigger>
           <TabsTrigger value="gases" className="gap-2"><Flame className="size-4" /> Gases</TabsTrigger>
           <TabsTrigger value="sizes" className="gap-2"><Package className="size-4" /> Sizes</TabsTrigger>
+          <TabsTrigger value="parts" className="gap-2"><Wrench className="size-4" /> Parts</TabsTrigger>
           <TabsTrigger value="permissions" className="gap-2"><ShieldCheck className="size-4" /> Roles</TabsTrigger>
           {isAdmin && <TabsTrigger value="staff" className="gap-2"><Users className="size-4" /> Staff</TabsTrigger>}
         </TabsList>
@@ -51,6 +52,7 @@ function SettingsPage() {
         <TabsContent value="company" className="mt-5"><CompanyForm /></TabsContent>
         <TabsContent value="gases" className="mt-5"><GasTypesPanel /></TabsContent>
         <TabsContent value="sizes" className="mt-5"><SizesPanel /></TabsContent>
+        <TabsContent value="parts" className="mt-5"><PartSizesPanel /></TabsContent>
         <TabsContent value="permissions" className="mt-5"><PermissionsMatrix /></TabsContent>
         {isAdmin && <TabsContent value="staff" className="mt-5"><StaffPanel /></TabsContent>}
       </Tabs>
