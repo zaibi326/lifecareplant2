@@ -24,7 +24,7 @@ function StockPage() {
     queryKey: ["stock"],
     queryFn: async () => {
       const today = todayISO();
-      const [gases, sizes, movements, openings, production, parts, partSizes] = await Promise.all([
+      const [gases, sizes, movements, openings, production, parts, partSizes, settings] = await Promise.all([
         supabase.from("gas_types").select("id,name,color").eq("active", true).order("name"),
         supabase.from("cylinder_sizes").select("id,name").eq("active", true).order("name"),
         supabase.from("cylinder_movements").select("type,quantity,gas_type_id,cylinder_size_id,date,extras"),
@@ -32,6 +32,7 @@ function StockPage() {
         supabase.from("production").select("quantity,date").eq("date", today),
         supabase.from("parts_stock").select("*").order("kind").order("size"),
         supabase.from("part_sizes").select("label").eq("active", true).order("sort_order").order("label"),
+        supabase.from("settings").select("plant_opening_stock").eq("id", 1).maybeSingle(),
       ]);
       return {
         gases: gases.data ?? [],
@@ -41,6 +42,7 @@ function StockPage() {
         production: production.data ?? [],
         parts: parts.data ?? [],
         partSizes: (partSizes.data ?? []).map((r: any) => String(r.label)),
+        plantOpening: Number(settings.data?.plant_opening_stock ?? 0),
       };
     },
   });
