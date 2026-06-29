@@ -253,6 +253,33 @@ export type Database = {
         }
         Relationships: []
       }
+      parts_stock: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          quantity: number
+          size: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          quantity?: number
+          size: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          quantity?: number
+          size?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number

@@ -23,8 +23,10 @@ import { enqueue } from "@/lib/offline-queue";
 
 type MovType = "receive" | "deliver";
 type LineRow = { gas_type_id: string; cylinder_size_id: string; quantity: number; rate: number };
-type ExtraRow = { name: string; price: number | "" };
+type ExtraRow = { name: string; price: number | ""; size?: string };
 const EXTRA_PRESETS = ["Valve", "Spindle", "Repair Valve", "Cap", "O-Ring", "Neck Ring", "Other"];
+const PART_SIZES = ['1"', '1.15"', '1.30"', '1.45"', '2"'];
+const isSized = (n: string) => n === "Valve" || n === "Spindle";
 
 export const Route = createFileRoute("/_authenticated/movements")({
   validateSearch: (s: Record<string, unknown>) => ({ type: ((s.type as MovType) ?? "receive") as MovType }),
@@ -228,10 +230,14 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
   const [ecrNumber, setEcrNumber] = useState<string>(editing?.ecr_number ?? "");
   const [extras, setExtras] = useState<ExtraRow[]>(
     Array.isArray(editing?.extras)
-      ? (editing.extras as any[]).map((e) => ({ name: String(e?.name ?? ""), price: e?.price === null || e?.price === undefined || e?.price === "" ? "" : Number(e.price) }))
+      ? (editing.extras as any[]).map((e) => ({
+          name: String(e?.name ?? ""),
+          price: e?.price === null || e?.price === undefined || e?.price === "" ? "" : Number(e.price),
+          size: e?.size ? String(e.size) : undefined,
+        }))
       : [],
   );
-  const addExtra = () => setExtras((r) => [...r, { name: EXTRA_PRESETS[0], price: "" }]);
+  const addExtra = () => setExtras((r) => [...r, { name: EXTRA_PRESETS[0], price: "", size: PART_SIZES[0] }]);
   const updExtra = (i: number, patch: Partial<ExtraRow>) =>
     setExtras((r) => r.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
   const delExtra = (i: number) => setExtras((r) => r.filter((_, idx) => idx !== i));
@@ -288,8 +294,17 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
       const ecr_number = type === "deliver" ? (ecrNumber.trim() || null) : null;
       const extrasClean = type === "deliver"
         ? extras
-            .map((e) => ({ name: String(e.name || "").trim(), price: e.price === "" ? null : Number(e.price) || 0 }))
-            .filter((e) => e.name.length > 0)
+            .map((e) => {
+              const name = String(e.name || "").trim();
+              const size = isSized(name) && e.size ? String(e.size) : null;
+              return {
+                name,
+                price: e.price === "" ? null : Number(e.price) || 0,
+                size,
+                kind: name === "Valve" ? "valve" : name === "Spindle" ? "spindle" : null,
+              };
+            })
+            .filter((e) => e.name.length > 0 && (!isSized(e.name) || e.size))
         : [];
 
       const photo_urls: string[] = [];
@@ -457,33 +472,52 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
           {extras.length === 0 && (
             <p className="text-xs text-muted-foreground">Valve, spindle, repair valve waghaira add karein.</p>
           )}
-          {extras.map((e, i) => (
-            <div key={i} className="grid grid-cols-[1fr_1fr_90px_auto] gap-1.5 items-center rounded-md bg-muted/30 p-2">
-              <Select value={EXTRA_PRESETS.includes(e.name) ? e.name : "Other"} onValueChange={(v) => updExtra(i, { name: v === "Other" ? "" : v })}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Item" /></SelectTrigger>
-                <SelectContent>
-                  {EXTRA_PRESETS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Input
-                value={EXTRA_PRESETS.includes(e.name) && e.name !== "Other" ? e.name : e.name}
-                onChange={(ev) => updExtra(i, { name: ev.target.value })}
-                placeholder="Name / details"
-                className="h-9 text-xs"
-              />
-              <Input
-                type="number"
-                min={0}
-                value={e.price === "" ? "" : e.price}
-                onChange={(ev) => updExtra(i, { price: ev.target.value === "" ? "" : Number(ev.target.value) })}
-                placeholder="Price"
-                className="h-9 text-xs"
-              />
-              <Button type="button" size="icon" variant="ghost" onClick={() => delExtra(i)} className="size-9">
-                <Trash2 className="size-4 text-destructive" />
-              </Button>
-            </div>
-          ))}
+          {extras.map((e, i) => {
+            const sized = isSized(e.name);
+            return (
+              <div key={i} className="space-y-1.5 rounded-md bg-muted/30 p-2">
+                <div className="grid grid-cols-[1fr_1fr_90px_auto] gap-1.5 items-center">
+                  <Select
+                    value={EXTRA_PRESETS.includes(e.name) ? e.name : "Other"}
+                    onValueChange={(v) => updExtra(i, { name: v === "Other" ? "" : v, size: v === "Valve" || v === "Spindle" ? (e.size ?? PART_SIZES[0]) : undefined })}
+                  >
+                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Item" /></SelectTrigger>
+                    <SelectContent>
+                      {EXTRA_PRESETS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={e.name}
+                    onChange={(ev) => updExtra(i, { name: ev.target.value })}
+                    placeholder="Name / details"
+                    className="h-9 text-xs"
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    value={e.price === "" ? "" : e.price}
+                    onChange={(ev) => updExtra(i, { price: ev.target.value === "" ? "" : Number(ev.target.value) })}
+                    placeholder="Price"
+                    className="h-9 text-xs"
+                  />
+                  <Button type="button" size="icon" variant="ghost" onClick={() => delExtra(i)} className="size-9">
+                    <Trash2 className="size-4 text-destructive" />
+                  </Button>
+                </div>
+                {sized && (
+                  <div className="grid grid-cols-[80px_1fr] gap-1.5 items-center">
+                    <Label className="text-[11px] text-muted-foreground">Size</Label>
+                    <Select value={e.size ?? PART_SIZES[0]} onValueChange={(v) => updExtra(i, { size: v })}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Size" /></SelectTrigger>
+                      <SelectContent>
+                        {PART_SIZES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            );
+          })}
           {extras.length > 0 && (
             <div className="flex items-center justify-between border-t pt-2 mt-2">
               <span className="text-xs uppercase tracking-wider text-muted-foreground">Extras Total</span>
