@@ -181,7 +181,7 @@ function PartsStockSection({ parts, partSizes, usedMap, onChanged }: { parts: an
       </div>
 
       {addOpen && (
-        <AddPartForm onSubmit={(row) => upsert.mutate(row)} pending={upsert.isPending} />
+        <AddPartForm partSizes={partSizes} onSubmit={(row) => upsert.mutate(row)} pending={upsert.isPending} />
       )}
 
       {parts.length === 0 && !addOpen && (
