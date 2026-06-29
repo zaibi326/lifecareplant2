@@ -224,6 +224,17 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
       : [],
   );
   const [photos, setPhotos] = useState<File[]>([]);
+  const [billNumber, setBillNumber] = useState<string>(editing?.bill_number ?? "");
+  const [ecrNumber, setEcrNumber] = useState<string>(editing?.ecr_number ?? "");
+  const [extras, setExtras] = useState<ExtraRow[]>(
+    Array.isArray(editing?.extras)
+      ? (editing.extras as any[]).map((e) => ({ name: String(e?.name ?? ""), price: e?.price === null || e?.price === undefined || e?.price === "" ? "" : Number(e.price) }))
+      : [],
+  );
+  const addExtra = () => setExtras((r) => [...r, { name: EXTRA_PRESETS[0], price: "" }]);
+  const updExtra = (i: number, patch: Partial<ExtraRow>) =>
+    setExtras((r) => r.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  const delExtra = (i: number) => setExtras((r) => r.filter((_, idx) => idx !== i));
 
   const { data: lookups } = useQuery({
     queryKey: ["movement-lookups"],
