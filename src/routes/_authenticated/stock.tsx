@@ -69,7 +69,8 @@ function StockPage() {
     perCust.set(m.customer_id, e);
   }
   let withCustomers = 0;
-  for (const v of perCust.values()) withCustomers += Math.max(0, v.op + v.d - v.r);
+  for (const v of perCust.values()) withCustomers += Math.max(0, v.op - v.d + v.r);
+
   const todayProduction = (data?.production ?? []).reduce((a, p: any) => a + Number(p.quantity ?? 0), 0);
 
   // Parts used count: each extras row with kind+size = qty pieces delivered
