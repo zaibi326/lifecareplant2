@@ -401,7 +401,7 @@ function CustomersPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete customer?</AlertDialogTitle>
             <AlertDialogDescription>
-              Ye action permanent hai. Agar customer ki movements ya payments mojood hon to delete nahi hoga — pehle wo records hatayein.
+              Ye action permanent hai. Customer ke saath uski tamam movements, payments, aur opening balances bhi delete ho jaein gy.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
