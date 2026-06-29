@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { listStaff, createStaff, updateStaffRole, deleteStaff, resetStaffPassword } from "@/lib/staff.functions";
 
 export const Route = createFileRoute("/_authenticated/settings")({
-  head: () => ({ meta: [{ title: "Settings — GasFlow Pro" }] }),
+  head: () => ({ meta: [{ title: "Settings — Life Care Plant" }] }),
   component: SettingsPage,
 });
 

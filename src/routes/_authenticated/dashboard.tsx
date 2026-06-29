@@ -14,7 +14,7 @@ import {
 } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — GasFlow Pro" }] }),
+  head: () => ({ meta: [{ title: "Dashboard — Life Care Plant" }] }),
   component: Dashboard,
 });
 

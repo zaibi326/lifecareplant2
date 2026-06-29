@@ -14,7 +14,7 @@ const PART_KINDS = ["valve", "spindle"] as const;
 const DEFAULT_PART_SIZES = ['1"', '1.15"', '1.30"', '1.45"', '2"'];
 
 export const Route = createFileRoute("/_authenticated/stock")({
-  head: () => ({ meta: [{ title: "Stock — GasFlow Pro" }] }),
+  head: () => ({ meta: [{ title: "Stock — Life Care Plant" }] }),
   component: StockPage,
 });
 

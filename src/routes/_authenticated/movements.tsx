@@ -30,7 +30,7 @@ const isSized = (n: string) => n === "Valve" || n === "Spindle";
 
 export const Route = createFileRoute("/_authenticated/movements")({
   validateSearch: (s: Record<string, unknown>) => ({ type: ((s.type as MovType) ?? "receive") as MovType }),
-  head: () => ({ meta: [{ title: "Movements — GasFlow Pro" }] }),
+  head: () => ({ meta: [{ title: "Movements — Life Care Plant" }] }),
   component: MovementsPage,
 });
 
@@ -192,7 +192,7 @@ async function printInvoice(m: any) {
   const grand = sub + taxAmt;
   printHTML(`Invoice ${m.invoice_number ?? ""}`, `
     <div class="head">
-      <div><h1>${s?.company_name ?? "GasFlow Pro"}</h1><div class="muted">${s?.company_address ?? ""}</div><div class="muted">${s?.company_phone ?? ""}</div></div>
+      <div><h1>${s?.company_name ?? "Life Care Plant"}</h1><div class="muted">${s?.company_address ?? ""}</div><div class="muted">${s?.company_phone ?? ""}</div></div>
       <div style="text-align:right"><span class="badge">INVOICE</span><div style="margin-top:8px;font-weight:700">${m.invoice_number ?? ""}</div><div class="muted">${formatDate(m.date)}</div></div>
     </div>
     <h2>Bill To</h2>
