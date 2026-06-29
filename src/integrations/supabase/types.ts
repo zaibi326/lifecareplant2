@@ -113,6 +113,7 @@ export type Database = {
       }
       cylinder_movements: {
         Row: {
+          bill_number: string | null
           condition: Database["public"]["Enums"]["cylinder_condition"] | null
           created_at: string
           created_by: string | null
@@ -120,6 +121,8 @@ export type Database = {
           cylinder_size_id: string
           date: string
           driver_name: string | null
+          ecr_number: string | null
+          extras: Json
           gas_type_id: string
           id: string
           invoice_number: string | null
@@ -132,6 +135,7 @@ export type Database = {
           vehicle_number: string | null
         }
         Insert: {
+          bill_number?: string | null
           condition?: Database["public"]["Enums"]["cylinder_condition"] | null
           created_at?: string
           created_by?: string | null
@@ -139,6 +143,8 @@ export type Database = {
           cylinder_size_id: string
           date?: string
           driver_name?: string | null
+          ecr_number?: string | null
+          extras?: Json
           gas_type_id: string
           id?: string
           invoice_number?: string | null
@@ -151,6 +157,7 @@ export type Database = {
           vehicle_number?: string | null
         }
         Update: {
+          bill_number?: string | null
           condition?: Database["public"]["Enums"]["cylinder_condition"] | null
           created_at?: string
           created_by?: string | null
@@ -158,6 +165,8 @@ export type Database = {
           cylinder_size_id?: string
           date?: string
           driver_name?: string | null
+          ecr_number?: string | null
+          extras?: Json
           gas_type_id?: string
           id?: string
           invoice_number?: string | null

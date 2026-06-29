@@ -23,6 +23,8 @@ import { enqueue } from "@/lib/offline-queue";
 
 type MovType = "receive" | "deliver";
 type LineRow = { gas_type_id: string; cylinder_size_id: string; quantity: number; rate: number };
+type ExtraRow = { name: string; price: number | "" };
+const EXTRA_PRESETS = ["Valve", "Spindle", "Repair Valve", "Cap", "O-Ring", "Neck Ring", "Other"];
 
 export const Route = createFileRoute("/_authenticated/movements")({
   validateSearch: (s: Record<string, unknown>) => ({ type: ((s.type as MovType) ?? "receive") as MovType }),
@@ -222,6 +224,17 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
       : [],
   );
   const [photos, setPhotos] = useState<File[]>([]);
+  const [billNumber, setBillNumber] = useState<string>(editing?.bill_number ?? "");
+  const [ecrNumber, setEcrNumber] = useState<string>(editing?.ecr_number ?? "");
+  const [extras, setExtras] = useState<ExtraRow[]>(
+    Array.isArray(editing?.extras)
+      ? (editing.extras as any[]).map((e) => ({ name: String(e?.name ?? ""), price: e?.price === null || e?.price === undefined || e?.price === "" ? "" : Number(e.price) }))
+      : [],
+  );
+  const addExtra = () => setExtras((r) => [...r, { name: EXTRA_PRESETS[0], price: "" }]);
+  const updExtra = (i: number, patch: Partial<ExtraRow>) =>
+    setExtras((r) => r.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  const delExtra = (i: number) => setExtras((r) => r.filter((_, idx) => idx !== i));
 
   const { data: lookups } = useQuery({
     queryKey: ["movement-lookups"],
@@ -252,9 +265,13 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
     setLines((r) => r.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
   const delLine = (i: number) => setLines((r) => r.filter((_, idx) => idx !== i));
 
-  const grandTotal = type === "deliver"
+  const extrasTotal = type === "deliver"
+    ? extras.reduce((a, e) => a + (Number(e.price) || 0), 0)
+    : 0;
+  const linesTotal = type === "deliver"
     ? lines.reduce((a, l) => a + Number(l.quantity || 0) * Number(l.rate || 0), 0)
     : 0;
+  const grandTotal = linesTotal + extrasTotal;
 
   const save = useMutation({
     mutationFn: async (f: FormData) => {
@@ -267,6 +284,13 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
       const remarks = String(f.get("remarks") ?? "").trim() || null;
       const condition = cond || (type === "receive" ? "empty" : "filled");
       const offline = typeof navigator !== "undefined" && !navigator.onLine;
+      const bill_number = type === "deliver" ? (billNumber.trim() || null) : null;
+      const ecr_number = type === "deliver" ? (ecrNumber.trim() || null) : null;
+      const extrasClean = type === "deliver"
+        ? extras
+            .map((e) => ({ name: String(e.name || "").trim(), price: e.price === "" ? null : Number(e.price) || 0 }))
+            .filter((e) => e.name.length > 0)
+        : [];
 
       const photo_urls: string[] = [];
       if (!offline && photos.length > 0) {
@@ -281,39 +305,51 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
 
       if (isEdit) {
         const l = valid[0];
+        const lineAmt = type === "deliver" ? Number(l.quantity) * Number(l.rate || 0) : null;
+        const extrasSum = extrasClean.reduce((a, e) => a + (Number(e.price) || 0), 0);
         const { error } = await supabase.from("cylinder_movements").update({
           customer_id: customer,
           gas_type_id: l.gas_type_id,
           cylinder_size_id: l.cylinder_size_id,
           quantity: Number(l.quantity),
           rate: type === "deliver" ? Number(l.rate || 0) : null,
-          total_amount: type === "deliver" ? Number(l.quantity) * Number(l.rate || 0) : null,
+          total_amount: type === "deliver" ? (lineAmt ?? 0) + extrasSum : null,
           date,
           vehicle_number,
           driver_name,
           condition,
           remarks,
+          bill_number,
+          ecr_number,
+          extras: extrasClean,
           ...(photo_urls.length ? { photo_urls } : {}),
         }).eq("id", editing.id);
         if (error) throw error;
         return { queued: false };
       }
 
-      const payloads = valid.map((l) => ({
-        type,
-        customer_id: customer,
-        gas_type_id: l.gas_type_id,
-        cylinder_size_id: l.cylinder_size_id,
-        quantity: Number(l.quantity),
-        rate: type === "deliver" ? Number(l.rate || 0) : null,
-        total_amount: type === "deliver" ? Number(l.quantity) * Number(l.rate || 0) : null,
-        date,
-        vehicle_number,
-        driver_name,
-        condition,
-        remarks,
-        photo_urls: photo_urls.length ? photo_urls : null,
-      }));
+      const payloads = valid.map((l, idx) => {
+        const lineAmt = type === "deliver" ? Number(l.quantity) * Number(l.rate || 0) : null;
+        const extrasSum = idx === 0 ? extrasClean.reduce((a, e) => a + (Number(e.price) || 0), 0) : 0;
+        return {
+          type,
+          customer_id: customer,
+          gas_type_id: l.gas_type_id,
+          cylinder_size_id: l.cylinder_size_id,
+          quantity: Number(l.quantity),
+          rate: type === "deliver" ? Number(l.rate || 0) : null,
+          total_amount: type === "deliver" ? (lineAmt ?? 0) + extrasSum : null,
+          date,
+          vehicle_number,
+          driver_name,
+          condition,
+          remarks,
+          bill_number,
+          ecr_number,
+          extras: idx === 0 ? extrasClean : [],
+          photo_urls: photo_urls.length ? photo_urls : null,
+        };
+      });
 
       if (offline) {
         for (const p of payloads) {
@@ -404,11 +440,75 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
         ))}
         {type === "deliver" && lines.length > 0 && (
           <div className="flex items-center justify-between border-t pt-2 mt-2">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">Grand Total</span>
-            <span className="font-display font-bold text-lg">{formatCurrency(grandTotal)}</span>
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">Cylinders Total</span>
+            <span className="font-semibold">{formatCurrency(linesTotal)}</span>
           </div>
         )}
       </div>
+
+      {type === "deliver" && (
+        <div className="rounded-lg border p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-semibold">Extras / Parts <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Button type="button" size="sm" variant="outline" onClick={addExtra} className="h-8 gap-1">
+              <Plus className="size-3.5" /> Add
+            </Button>
+          </div>
+          {extras.length === 0 && (
+            <p className="text-xs text-muted-foreground">Valve, spindle, repair valve waghaira add karein.</p>
+          )}
+          {extras.map((e, i) => (
+            <div key={i} className="grid grid-cols-[1fr_1fr_90px_auto] gap-1.5 items-center rounded-md bg-muted/30 p-2">
+              <Select value={EXTRA_PRESETS.includes(e.name) ? e.name : "Other"} onValueChange={(v) => updExtra(i, { name: v === "Other" ? "" : v })}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Item" /></SelectTrigger>
+                <SelectContent>
+                  {EXTRA_PRESETS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Input
+                value={EXTRA_PRESETS.includes(e.name) && e.name !== "Other" ? e.name : e.name}
+                onChange={(ev) => updExtra(i, { name: ev.target.value })}
+                placeholder="Name / details"
+                className="h-9 text-xs"
+              />
+              <Input
+                type="number"
+                min={0}
+                value={e.price === "" ? "" : e.price}
+                onChange={(ev) => updExtra(i, { price: ev.target.value === "" ? "" : Number(ev.target.value) })}
+                placeholder="Price"
+                className="h-9 text-xs"
+              />
+              <Button type="button" size="icon" variant="ghost" onClick={() => delExtra(i)} className="size-9">
+                <Trash2 className="size-4 text-destructive" />
+              </Button>
+            </div>
+          ))}
+          {extras.length > 0 && (
+            <div className="flex items-center justify-between border-t pt-2 mt-2">
+              <span className="text-xs uppercase tracking-wider text-muted-foreground">Extras Total</span>
+              <span className="font-semibold">{formatCurrency(extrasTotal)}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between border-t pt-2 mt-2">
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">Grand Total</span>
+            <span className="font-display font-bold text-lg">{formatCurrency(grandTotal)}</span>
+          </div>
+        </div>
+      )}
+
+      {type === "deliver" && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs">Bill #</Label>
+            <Input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} placeholder="Optional" className="mt-1.5 h-11" />
+          </div>
+          <div>
+            <Label className="text-xs">ECR #</Label>
+            <Input value={ecrNumber} onChange={(e) => setEcrNumber(e.target.value)} placeholder="Optional" className="mt-1.5 h-11" />
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div>
