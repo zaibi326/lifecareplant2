@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Building2, Flame, Package, Users, KeyRound, ShieldCheck } from "lucide-react";
+import { Plus, Trash2, Building2, Flame, Package, Users, KeyRound, ShieldCheck, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { listStaff, createStaff, updateStaffRole, deleteStaff, resetStaffPassword } from "@/lib/staff.functions";
 
