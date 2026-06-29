@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -34,6 +35,7 @@ function CustomersPage() {
   const [editing, setEditing] = useState<EditState>(null);
   const [openRows, setOpenRows] = useState<OpenRow[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
 
   const { data: refs } = useQuery({
     queryKey: ["customer-form-refs"],
@@ -49,11 +51,12 @@ function CustomersPage() {
   const { data } = useQuery({
     queryKey: ["customers-with-balance"],
     queryFn: async () => {
-      const [{ data: cs }, { data: ms }, { data: ps }, { data: obs }] = await Promise.all([
+      const [{ data: cs }, { data: ms }, { data: ps }, { data: obs }, { data: szs }] = await Promise.all([
         supabase.from("customers").select("*").order("name"),
-        supabase.from("cylinder_movements").select("customer_id,type,quantity,total_amount"),
+        supabase.from("cylinder_movements").select("customer_id,type,quantity,total_amount,cylinder_size_id"),
         supabase.from("payments").select("customer_id,amount"),
-        supabase.from("customer_opening_balances").select("customer_id,quantity,condition"),
+        supabase.from("customer_opening_balances").select("customer_id,quantity,condition,cylinder_size_id"),
+        supabase.from("cylinder_sizes").select("id,name").order("name"),
       ]);
       const openSum = new Map<string, number>();
       (obs ?? []).forEach((o: any) => {
@@ -77,7 +80,22 @@ function CustomersPage() {
         if (!e) return;
         e.due -= Number(p.amount ?? 0);
       });
-      return (cs ?? []).map((c) => ({ ...c, balance: map.get(c.id)! }));
+
+      // Per-size breakdown across all customers (opening + delivered − received)
+      const sizeMap = new Map<string, number>();
+      (obs ?? []).forEach((o: any) => {
+        if (!o.cylinder_size_id) return;
+        sizeMap.set(o.cylinder_size_id, (sizeMap.get(o.cylinder_size_id) ?? 0) + Number(o.quantity ?? 0));
+      });
+      (ms ?? []).forEach((m: any) => {
+        if (!m.cylinder_size_id) return;
+        const cur = sizeMap.get(m.cylinder_size_id) ?? 0;
+        const q = Number(m.quantity ?? 0);
+        sizeMap.set(m.cylinder_size_id, cur + (m.type === "deliver" ? q : -q));
+      });
+      const sizeBreakdown = (szs ?? []).map((s: any) => ({ name: s.name, qty: sizeMap.get(s.id) ?? 0 }));
+
+      return { rows: (cs ?? []).map((c) => ({ ...c, balance: map.get(c.id)! })), sizeBreakdown };
     },
   });
 
@@ -94,9 +112,10 @@ function CustomersPage() {
   }, [editing]);
 
   const filtered = useMemo(() => {
+    const rows = data?.rows ?? [];
     const s = q.trim().toLowerCase();
-    if (!s) return data ?? [];
-    return (data ?? []).filter((c: any) => c.name.toLowerCase().includes(s) || (c.phone ?? "").includes(s));
+    if (!s) return rows;
+    return rows.filter((c: any) => c.name.toLowerCase().includes(s) || (c.phone ?? "").includes(s));
   }, [data, q]);
 
   const totals = useMemo(() => {
@@ -262,9 +281,32 @@ function CustomersPage() {
 
       <div className="grid grid-cols-3 gap-3">
         <Stat icon={UsersIcon} label="Customers" value={totals.count.toLocaleString()} tone="default" />
-        <Stat icon={Package} label="Cylinders Out" value={totals.out.toLocaleString()} tone="brand" />
+        <button type="button" onClick={() => setBreakdownOpen(true)} className="text-left">
+          <Stat icon={Package} label="Cylinders Out" value={totals.out.toLocaleString()} tone="brand" hint="Tap for sizes" />
+        </button>
         <Stat icon={Wallet} label="Outstanding" value={formatCurrency(totals.due)} tone="warn" />
       </div>
+
+      <Dialog open={breakdownOpen} onOpenChange={setBreakdownOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Cylinders by Size</DialogTitle></DialogHeader>
+          <div className="space-y-2 mt-2">
+            {(data?.sizeBreakdown ?? []).length === 0 && (
+              <p className="text-sm text-muted-foreground">Koi size configured nahi.</p>
+            )}
+            {(data?.sizeBreakdown ?? []).map((s: any) => (
+              <div key={s.name} className="flex items-center justify-between rounded-lg border p-3">
+                <span className="text-sm font-semibold">{s.name}</span>
+                <span className="font-display font-bold text-lg">{Number(s.qty).toLocaleString()}</span>
+              </div>
+            ))}
+            <div className="flex items-center justify-between rounded-lg bg-muted p-3 mt-3">
+              <span className="text-xs uppercase tracking-wider text-muted-foreground">Total</span>
+              <span className="font-display font-bold text-xl">{totals.out.toLocaleString()}</span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="relative">
         <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -337,13 +379,14 @@ function Field({ label, name, type = "text", required, defaultValue, placeholder
   );
 }
 
-function Stat({ icon: Icon, label, value, tone }: any) {
+function Stat({ icon: Icon, label, value, tone, hint }: any) {
   const toneCls = tone === "brand" ? "bg-brand/10 text-brand" : tone === "warn" ? "bg-warning/15 text-warning" : "bg-muted text-foreground";
   return (
-    <Card className="p-3">
+    <Card className="p-3 h-full">
       <div className={`size-8 rounded-lg grid place-items-center ${toneCls}`}><Icon className="size-4" /></div>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-2">{label}</div>
       <div className="font-display font-bold text-lg mt-0.5 truncate">{value}</div>
+      {hint && <div className="text-[9px] text-brand mt-0.5">{hint}</div>}
     </Card>
   );
 }
