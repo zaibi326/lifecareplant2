@@ -281,9 +281,32 @@ function CustomersPage() {
 
       <div className="grid grid-cols-3 gap-3">
         <Stat icon={UsersIcon} label="Customers" value={totals.count.toLocaleString()} tone="default" />
-        <Stat icon={Package} label="Cylinders Out" value={totals.out.toLocaleString()} tone="brand" />
+        <button type="button" onClick={() => setBreakdownOpen(true)} className="text-left">
+          <Stat icon={Package} label="Cylinders Out" value={totals.out.toLocaleString()} tone="brand" hint="Tap for sizes" />
+        </button>
         <Stat icon={Wallet} label="Outstanding" value={formatCurrency(totals.due)} tone="warn" />
       </div>
+
+      <Dialog open={breakdownOpen} onOpenChange={setBreakdownOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Cylinders by Size</DialogTitle></DialogHeader>
+          <div className="space-y-2 mt-2">
+            {(data?.sizeBreakdown ?? []).length === 0 && (
+              <p className="text-sm text-muted-foreground">Koi size configured nahi.</p>
+            )}
+            {(data?.sizeBreakdown ?? []).map((s: any) => (
+              <div key={s.name} className="flex items-center justify-between rounded-lg border p-3">
+                <span className="text-sm font-semibold">{s.name}</span>
+                <span className="font-display font-bold text-lg">{Number(s.qty).toLocaleString()}</span>
+              </div>
+            ))}
+            <div className="flex items-center justify-between rounded-lg bg-muted p-3 mt-3">
+              <span className="text-xs uppercase tracking-wider text-muted-foreground">Total</span>
+              <span className="font-display font-bold text-xl">{totals.out.toLocaleString()}</span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="relative">
         <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
