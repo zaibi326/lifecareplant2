@@ -54,7 +54,8 @@ function StockPage() {
 
   const totalReceived = sumBy((m) => m.type === "receive");
   const totalDelivered = sumBy((m) => m.type === "deliver");
-  const plantStock = Math.max(0, totalReceived - totalDelivered);
+  const plantOpening = Number(data?.plantOpening ?? 0);
+  const plantStock = Math.max(0, plantOpening + totalReceived - totalDelivered);
   const customerOpening = sumOpen(() => true);
   const withCustomers = Math.max(0, customerOpening + totalDelivered - totalReceived);
   const todayProduction = (data?.production ?? []).reduce((a, p: any) => a + Number(p.quantity ?? 0), 0);
