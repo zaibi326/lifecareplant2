@@ -40,7 +40,7 @@ function MovementsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string[] | null>(null);
   const [q, setQ] = useState("");
 
   const { data, isLoading } = useQuery({
@@ -66,9 +66,22 @@ function MovementsPage() {
     );
   }, [data, q]);
 
+  // Group delivery rows by shared invoice_number (one bill per delivery)
+  const groups = useMemo(() => {
+    if (type !== "deliver") return (filtered as any[]).map((m) => ({ key: m.id, rows: [m] }));
+    const map = new Map<string, any[]>();
+    const out: { key: string; rows: any[] }[] = [];
+    (filtered as any[]).forEach((m) => {
+      const key = m.invoice_number ? `inv:${m.invoice_number}` : `id:${m.id}`;
+      if (!map.has(key)) { map.set(key, []); out.push({ key, rows: map.get(key)! }); }
+      map.get(key)!.push(m);
+    });
+    return out;
+  }, [filtered, type]);
+
   const del = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("cylinder_movements").delete().eq("id", id);
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from("cylinder_movements").delete().in("id", ids);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -130,40 +143,52 @@ function MovementsPage() {
       <div className="space-y-2">
         {isLoading && <Card className="p-6 text-sm text-muted-foreground">Loading…</Card>}
         {!isLoading && filtered.length === 0 && <Card className="p-8 text-center text-sm text-muted-foreground">No entries yet.</Card>}
-        {filtered.map((m: any) => (
-          <Card key={m.id} className="p-4 flex items-center gap-3">
-            <div className="size-10 rounded-lg grid place-items-center text-white font-bold text-xs" style={{ background: m.gas_types?.color || "var(--brand)" }}>
-              {(m.gas_types?.name ?? "—").slice(0, 2).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold truncate">{m.customers?.name ?? "—"}</div>
-              <div className="text-xs text-muted-foreground truncate">
-                {m.quantity}× {m.cylinder_sizes?.name ?? ""} • {formatDate(m.date)}
-                {m.invoice_number ? ` • ${m.invoice_number}` : ""}
+        {groups.map((g) => {
+          const rows = g.rows;
+          const first = rows[0];
+          const totalQty = rows.reduce((a: number, r: any) => a + Number(r.quantity || 0), 0);
+          const totalAmt = rows.reduce((a: number, r: any) => a + Number(r.total_amount || 0), 0);
+          const summary = rows
+            .map((r: any) => `${r.quantity}× ${r.gas_types?.name ?? ""} ${r.cylinder_sizes?.name ?? ""}`.trim())
+            .join(", ");
+          const ids = rows.map((r: any) => r.id);
+          return (
+            <Card key={g.key} className="p-4 flex items-center gap-3">
+              <div className="size-10 rounded-lg grid place-items-center text-white font-bold text-xs" style={{ background: first.gas_types?.color || "var(--brand)" }}>
+                {(first.gas_types?.name ?? "—").slice(0, 2).toUpperCase()}
               </div>
-            </div>
-            <div className="text-right flex flex-col items-end gap-1">
-              <div className="font-display font-bold">{m.quantity}</div>
-              {type === "deliver" && <Badge variant="secondary" className="text-[10px]">{formatCurrency(m.total_amount)}</Badge>}
-              {type === "deliver" && (
-                <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs" onClick={() => printInvoice(m)}>
-                  <Printer className="size-3" /> Invoice
-                </Button>
-              )}
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-9 shrink-0"><MoreVertical className="size-4" /></Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => openEdit(m)} className="gap-2"><Pencil className="size-4" /> Edit</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setDeleteId(m.id)} className="gap-2 text-destructive focus:text-destructive">
-                  <Trash2 className="size-4" /> Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </Card>
-        ))}
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold truncate">{first.customers?.name ?? "—"}</div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {summary} • {formatDate(first.date)}
+                  {first.invoice_number ? ` • ${first.invoice_number}` : ""}
+                </div>
+              </div>
+              <div className="text-right flex flex-col items-end gap-1">
+                <div className="font-display font-bold">{totalQty}</div>
+                {type === "deliver" && <Badge variant="secondary" className="text-[10px]">{formatCurrency(totalAmt)}</Badge>}
+                {type === "deliver" && (
+                  <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs" onClick={() => printInvoice(rows)}>
+                    <Printer className="size-3" /> Invoice
+                  </Button>
+                )}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="size-9 shrink-0"><MoreVertical className="size-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {rows.length === 1 && (
+                    <DropdownMenuItem onClick={() => openEdit(first)} className="gap-2"><Pencil className="size-4" /> Edit</DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => setDeleteId(ids)} className="gap-2 text-destructive focus:text-destructive">
+                    <Trash2 className="size-4" /> Delete{rows.length > 1 ? ` (${rows.length} lines)` : ""}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </Card>
+          );
+        })}
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={(v) => !v && setDeleteId(null)}>
@@ -184,28 +209,47 @@ function MovementsPage() {
   );
 }
 
-async function printInvoice(m: any) {
+async function printInvoice(input: any | any[]) {
+  const rows: any[] = Array.isArray(input) ? input : [input];
+  const first = rows[0];
   const { data: s } = await supabase.from("settings").select("*").eq("id", 1).maybeSingle();
   const tax = Number(s?.tax_percent ?? 0);
-  const sub = Number(m.total_amount ?? 0);
+
+  const cylRows = rows.map((r) => {
+    const amt = Number(r.quantity || 0) * Number(r.rate || 0);
+    return `<tr><td>${r.gas_types?.name ?? ""} — ${r.cylinder_sizes?.name ?? ""}</td><td class="right">${r.quantity}</td><td class="right">${formatCurrency(Number(r.rate ?? 0))}</td><td class="right">${formatCurrency(amt)}</td></tr>`;
+  }).join("");
+
+  const extras = rows.flatMap((r) => Array.isArray(r.extras) ? r.extras : []);
+  const extraRows = extras.map((e: any) => {
+    const qty = Math.max(1, Number(e.qty) || 1);
+    const price = Number(e.price) || 0;
+    const label = `${e.name ?? ""}${e.size ? ` (${e.size})` : ""}`;
+    return `<tr><td>${label}</td><td class="right">${qty}</td><td class="right">${formatCurrency(price)}</td><td class="right">${formatCurrency(price * qty)}</td></tr>`;
+  }).join("");
+
+  const cylSub = rows.reduce((a, r) => a + Number(r.quantity || 0) * Number(r.rate || 0), 0);
+  const extrasSub = extras.reduce((a: number, e: any) => a + (Number(e.price) || 0) * Math.max(1, Number(e.qty) || 1), 0);
+  const sub = cylSub + extrasSub;
   const taxAmt = sub * tax / 100;
   const grand = sub + taxAmt;
-  printHTML(`Invoice ${m.invoice_number ?? ""}`, `
+
+  printHTML(`Invoice ${first.invoice_number ?? ""}`, `
     <div class="head">
       <div><h1>${s?.company_name ?? "Life Care Plant"}</h1><div class="muted">${s?.company_address ?? ""}</div><div class="muted">${s?.company_phone ?? ""}</div></div>
-      <div style="text-align:right"><span class="badge">INVOICE</span><div style="margin-top:8px;font-weight:700">${m.invoice_number ?? ""}</div><div class="muted">${formatDate(m.date)}</div></div>
+      <div style="text-align:right"><span class="badge">INVOICE</span><div style="margin-top:8px;font-weight:700">${first.invoice_number ?? ""}</div><div class="muted">${formatDate(first.date)}</div></div>
     </div>
     <h2>Bill To</h2>
-    <div style="font-weight:600">${m.customers?.name ?? ""}</div>
+    <div style="font-weight:600">${first.customers?.name ?? ""}</div>
     <h2>Items</h2>
     <table><thead><tr><th>Description</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Amount</th></tr></thead>
-    <tbody><tr><td>${m.gas_types?.name ?? ""} — ${m.cylinder_sizes?.name ?? ""}</td><td class="right">${m.quantity}</td><td class="right">${formatCurrency(Number(m.rate ?? 0))}</td><td class="right">${formatCurrency(sub)}</td></tr></tbody></table>
+    <tbody>${cylRows}${extraRows}</tbody></table>
     <div class="totals">
       <div><div class="label">Subtotal</div><div class="val">${formatCurrency(sub)}</div></div>
       ${tax ? `<div><div class="label">Tax (${tax}%)</div><div class="val">${formatCurrency(taxAmt)}</div></div>` : ""}
       <div><div class="label">Total</div><div class="val" style="font-size:18px">${formatCurrency(grand)}</div></div>
     </div>
-    ${m.vehicle_number ? `<div class="muted" style="margin-top:16px">Vehicle: ${m.vehicle_number}${m.driver_name ? ` • Driver: ${m.driver_name}` : ""}</div>` : ""}
+    ${first.vehicle_number ? `<div class="muted" style="margin-top:16px">Vehicle: ${first.vehicle_number}${first.driver_name ? ` • Driver: ${first.driver_name}` : ""}</div>` : ""}
     ${s?.invoice_footer ? `<div class="muted" style="margin-top:24px;border-top:1px solid #e2e8f0;padding-top:12px">${s.invoice_footer}</div>` : ""}
   `);
 }
@@ -382,6 +426,13 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
         }
         if (photos.length > 0) toast.message("Saved offline — photos skipped (require connection)");
         return { queued: true };
+      }
+
+      // Share a single invoice number across all lines of one delivery
+      if (type === "deliver" && payloads.length > 0) {
+        const { data: invNum, error: invErr } = await supabase.rpc("next_invoice_number");
+        if (invErr) throw invErr;
+        if (invNum) payloads.forEach((p: any) => { p.invoice_number = invNum as string; });
       }
 
       const { error } = await supabase.from("cylinder_movements").insert(payloads);
