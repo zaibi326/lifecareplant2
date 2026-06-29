@@ -24,14 +24,26 @@ function Dashboard() {
     queryFn: async () => {
       const today = todayISO();
       const since = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
-      const [movements, payments, production, customers, gases] = await Promise.all([
+      const [movements, payments, production, customers, gases, allMoves, allPays, settings] = await Promise.all([
         supabase.from("cylinder_movements").select("type,date,quantity,total_amount,customer_id,gas_type_id,cylinder_size_id,vehicle_number,driver_name,invoice_number,created_at,customers(name),gas_types(name,color)").gte("date", since).order("created_at", { ascending: false }),
         supabase.from("payments").select("amount,date,customer_id,created_at,customers(name)").gte("date", since).order("created_at", { ascending: false }),
         supabase.from("production").select("quantity,date").eq("date", today),
         supabase.from("customers").select("id,opening_cylinders,opening_due"),
         supabase.from("gas_types").select("id,name,color").eq("active", true),
+        supabase.from("cylinder_movements").select("type,quantity,total_amount"),
+        supabase.from("payments").select("amount"),
+        supabase.from("settings").select("plant_opening_stock").eq("id", 1).maybeSingle(),
       ]);
-      return { movements: movements.data ?? [], payments: payments.data ?? [], production: production.data ?? [], customers: customers.data ?? [], gases: gases.data ?? [] };
+      return {
+        movements: movements.data ?? [],
+        payments: payments.data ?? [],
+        production: production.data ?? [],
+        customers: customers.data ?? [],
+        gases: gases.data ?? [],
+        allMoves: allMoves.data ?? [],
+        allPays: allPays.data ?? [],
+        plantOpening: Number(settings.data?.plant_opening_stock ?? 0),
+      };
     },
   });
 
