@@ -30,7 +30,7 @@ function Dashboard() {
         supabase.from("production").select("quantity,date").eq("date", today),
         supabase.from("customers").select("id,opening_cylinders,opening_due"),
         supabase.from("gas_types").select("id,name,color").eq("active", true),
-        supabase.from("cylinder_movements").select("type,quantity,total_amount"),
+        supabase.from("cylinder_movements").select("type,quantity,total_amount,customer_id,customers(name)"),
         supabase.from("payments").select("amount"),
         supabase.from("settings").select("plant_opening_stock").eq("id", 1).maybeSingle(),
       ]);
@@ -58,14 +58,26 @@ function Dashboard() {
   const todayPayments = sum(pays.filter((p: any) => p.date === today), "amount");
 
   // Plant stock = plant opening + all-time received - all-time delivered
+  // With customers = all-time delivered - all-time received (cylinders abhi parties ke pass)
   const all = data?.allMoves ?? [];
   const allReceived = sum(all.filter((m: any) => m.type === "receive"), "quantity");
   const allDelivered = sum(all.filter((m: any) => m.type === "deliver"), "quantity");
 
-  const customerOpening = sum(data?.customers ?? [], "opening_cylinders");
   const plantOpening = Number(data?.plantOpening ?? 0);
-  const withCustomers = Math.max(0, customerOpening + allDelivered - allReceived);
+  const withCustomers = Math.max(0, allDelivered - allReceived);
   const plantStock = Math.max(0, plantOpening + allReceived - allDelivered);
+
+  // Per-party outstanding cylinders (delivered − received per customer)
+  const partyMap = new Map<string, { name: string; out: number }>();
+  for (const m of all) {
+    if (!m.customer_id) continue;
+    const e = partyMap.get(m.customer_id) ?? { name: m.customers?.name ?? "Customer", out: 0 };
+    const qty = Number(m.quantity ?? 0);
+    if (m.type === "deliver") e.out += qty;
+    else if (m.type === "receive") e.out -= qty;
+    partyMap.set(m.customer_id, e);
+  }
+  const partyBalances = Array.from(partyMap.values()).filter((p) => p.out > 0).sort((a, b) => b.out - a.out);
 
   const openingDue = sum(data?.customers ?? [], "opening_due");
   const billed = sum(all.filter((m: any) => m.type === "deliver"), "total_amount");
@@ -120,6 +132,29 @@ function Dashboard() {
         <Kpi label="Outstanding" value={formatCurrency(outstanding)} sub="Remaining due" tone="warning" />
         <Kpi label="Total Customers" value={(data?.customers.length ?? 0).toString()} sub="Active" tone="default" />
       </section>
+
+      <section className="bg-card border rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="font-display font-bold">Cylinders with Parties</h2>
+            <p className="text-xs text-muted-foreground">Plant ke cylinder jo abhi parties ke paas hain</p>
+          </div>
+          <Link to="/customers" className="text-xs text-brand font-medium">View all</Link>
+        </div>
+        {partyBalances.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-3">Koi cylinder party ke paas nahi.</p>
+        ) : (
+          <div className="divide-y">
+            {partyBalances.slice(0, 8).map((p, i) => (
+              <div key={i} className="py-2.5 flex items-center justify-between">
+                <span className="text-sm font-medium truncate">{p.name}</span>
+                <span className="font-display font-bold text-brand">{p.out}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
 
       <section className="grid grid-cols-2 gap-3 md:hidden">
         <Link to="/movements" search={{ type: "receive" } as any} className="flex flex-col items-center justify-center gap-2 bg-brand text-brand-foreground p-6 rounded-3xl shadow-lg shadow-brand/20 active:scale-95 transition-transform">
