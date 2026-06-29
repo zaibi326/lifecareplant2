@@ -142,6 +142,7 @@ function StockPage() {
 
       <PartsStockSection
         parts={data?.parts ?? []}
+        partSizes={data?.partSizes?.length ? data.partSizes : DEFAULT_PART_SIZES}
         usedMap={partsUsed}
         onChanged={() => qc.invalidateQueries({ queryKey: ["stock"] })}
       />
