@@ -143,40 +143,52 @@ function MovementsPage() {
       <div className="space-y-2">
         {isLoading && <Card className="p-6 text-sm text-muted-foreground">Loading…</Card>}
         {!isLoading && filtered.length === 0 && <Card className="p-8 text-center text-sm text-muted-foreground">No entries yet.</Card>}
-        {filtered.map((m: any) => (
-          <Card key={m.id} className="p-4 flex items-center gap-3">
-            <div className="size-10 rounded-lg grid place-items-center text-white font-bold text-xs" style={{ background: m.gas_types?.color || "var(--brand)" }}>
-              {(m.gas_types?.name ?? "—").slice(0, 2).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold truncate">{m.customers?.name ?? "—"}</div>
-              <div className="text-xs text-muted-foreground truncate">
-                {m.quantity}× {m.cylinder_sizes?.name ?? ""} • {formatDate(m.date)}
-                {m.invoice_number ? ` • ${m.invoice_number}` : ""}
+        {groups.map((g) => {
+          const rows = g.rows;
+          const first = rows[0];
+          const totalQty = rows.reduce((a: number, r: any) => a + Number(r.quantity || 0), 0);
+          const totalAmt = rows.reduce((a: number, r: any) => a + Number(r.total_amount || 0), 0);
+          const summary = rows
+            .map((r: any) => `${r.quantity}× ${r.gas_types?.name ?? ""} ${r.cylinder_sizes?.name ?? ""}`.trim())
+            .join(", ");
+          const ids = rows.map((r: any) => r.id);
+          return (
+            <Card key={g.key} className="p-4 flex items-center gap-3">
+              <div className="size-10 rounded-lg grid place-items-center text-white font-bold text-xs" style={{ background: first.gas_types?.color || "var(--brand)" }}>
+                {(first.gas_types?.name ?? "—").slice(0, 2).toUpperCase()}
               </div>
-            </div>
-            <div className="text-right flex flex-col items-end gap-1">
-              <div className="font-display font-bold">{m.quantity}</div>
-              {type === "deliver" && <Badge variant="secondary" className="text-[10px]">{formatCurrency(m.total_amount)}</Badge>}
-              {type === "deliver" && (
-                <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs" onClick={() => printInvoice(m)}>
-                  <Printer className="size-3" /> Invoice
-                </Button>
-              )}
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-9 shrink-0"><MoreVertical className="size-4" /></Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => openEdit(m)} className="gap-2"><Pencil className="size-4" /> Edit</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setDeleteId(m.id)} className="gap-2 text-destructive focus:text-destructive">
-                  <Trash2 className="size-4" /> Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </Card>
-        ))}
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold truncate">{first.customers?.name ?? "—"}</div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {summary} • {formatDate(first.date)}
+                  {first.invoice_number ? ` • ${first.invoice_number}` : ""}
+                </div>
+              </div>
+              <div className="text-right flex flex-col items-end gap-1">
+                <div className="font-display font-bold">{totalQty}</div>
+                {type === "deliver" && <Badge variant="secondary" className="text-[10px]">{formatCurrency(totalAmt)}</Badge>}
+                {type === "deliver" && (
+                  <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs" onClick={() => printInvoice(rows)}>
+                    <Printer className="size-3" /> Invoice
+                  </Button>
+                )}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="size-9 shrink-0"><MoreVertical className="size-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {rows.length === 1 && (
+                    <DropdownMenuItem onClick={() => openEdit(first)} className="gap-2"><Pencil className="size-4" /> Edit</DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => setDeleteId(ids)} className="gap-2 text-destructive focus:text-destructive">
+                    <Trash2 className="size-4" /> Delete{rows.length > 1 ? ` (${rows.length} lines)` : ""}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </Card>
+          );
+        })}
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={(v) => !v && setDeleteId(null)}>
