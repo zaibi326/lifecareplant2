@@ -23,7 +23,7 @@ import { enqueue } from "@/lib/offline-queue";
 
 type MovType = "receive" | "deliver";
 type LineRow = { gas_type_id: string; cylinder_size_id: string; quantity: number; rate: number };
-type ExtraRow = { name: string; price: number | ""; size?: string };
+type ExtraRow = { name: string; price: number | ""; qty: number | ""; size?: string };
 const EXTRA_PRESETS = ["Valve", "Spindle", "Repair Valve", "Cap", "O-Ring", "Neck Ring", "Other"];
 const PART_SIZES = ['1"', '1.15"', '1.30"', '1.45"', '2"'];
 const isSized = (n: string) => n === "Valve" || n === "Spindle";
@@ -233,11 +233,12 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
       ? (editing.extras as any[]).map((e) => ({
           name: String(e?.name ?? ""),
           price: e?.price === null || e?.price === undefined || e?.price === "" ? "" : Number(e.price),
+          qty: e?.qty === null || e?.qty === undefined || e?.qty === "" ? 1 : Number(e.qty),
           size: e?.size ? String(e.size) : undefined,
         }))
       : [],
   );
-  const addExtra = () => setExtras((r) => [...r, { name: EXTRA_PRESETS[0], price: "", size: partSizes[0] }]);
+  const addExtra = () => setExtras((r) => [...r, { name: EXTRA_PRESETS[0], price: "", qty: 1, size: partSizes[0] }]);
   const updExtra = (i: number, patch: Partial<ExtraRow>) =>
     setExtras((r) => r.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
   const delExtra = (i: number) => setExtras((r) => r.filter((_, idx) => idx !== i));
@@ -279,7 +280,7 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
   const delLine = (i: number) => setLines((r) => r.filter((_, idx) => idx !== i));
 
   const extrasTotal = type === "deliver"
-    ? extras.reduce((a, e) => a + (Number(e.price) || 0), 0)
+    ? extras.reduce((a, e) => a + (Number(e.price) || 0) * (Number(e.qty) || 0), 0)
     : 0;
   const linesTotal = type === "deliver"
     ? lines.reduce((a, l) => a + Number(l.quantity || 0) * Number(l.rate || 0), 0)
@@ -304,9 +305,11 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
             .map((e) => {
               const name = String(e.name || "").trim();
               const size = isSized(name) && e.size ? String(e.size) : null;
+              const qty = Math.max(1, Number(e.qty) || 1);
               return {
                 name,
                 price: e.price === "" ? null : Number(e.price) || 0,
+                qty,
                 size,
                 kind: name === "Valve" ? "valve" : name === "Spindle" ? "spindle" : null,
               };
@@ -328,7 +331,7 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
       if (isEdit) {
         const l = valid[0];
         const lineAmt = type === "deliver" ? Number(l.quantity) * Number(l.rate || 0) : null;
-        const extrasSum = extrasClean.reduce((a, e) => a + (Number(e.price) || 0), 0);
+        const extrasSum = extrasClean.reduce((a, e) => a + (Number(e.price) || 0) * (Number(e.qty) || 1), 0);
         const { error } = await supabase.from("cylinder_movements").update({
           customer_id: customer,
           gas_type_id: l.gas_type_id,
@@ -352,7 +355,7 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
 
       const payloads = valid.map((l, idx) => {
         const lineAmt = type === "deliver" ? Number(l.quantity) * Number(l.rate || 0) : null;
-        const extrasSum = idx === 0 ? extrasClean.reduce((a, e) => a + (Number(e.price) || 0), 0) : 0;
+        const extrasSum = idx === 0 ? extrasClean.reduce((a, e) => a + (Number(e.price) || 0) * (Number(e.qty) || 1), 0) : 0;
         return {
           type,
           customer_id: customer,
@@ -483,7 +486,7 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
             const sized = isSized(e.name);
             return (
               <div key={i} className="space-y-1.5 rounded-md bg-muted/30 p-2">
-                <div className="grid grid-cols-[1fr_1fr_90px_auto] gap-1.5 items-center">
+                <div className="grid grid-cols-[1fr_1fr_60px_80px_auto] gap-1.5 items-center">
                   <Select
                     value={EXTRA_PRESETS.includes(e.name) ? e.name : "Other"}
                     onValueChange={(v) => updExtra(i, { name: v === "Other" ? "" : v, size: v === "Valve" || v === "Spindle" ? (e.size ?? partSizes[0]) : undefined })}
@@ -497,6 +500,14 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
                     value={e.name}
                     onChange={(ev) => updExtra(i, { name: ev.target.value })}
                     placeholder="Name / details"
+                    className="h-9 text-xs"
+                  />
+                  <Input
+                    type="number"
+                    min={1}
+                    value={e.qty === "" ? "" : e.qty}
+                    onChange={(ev) => updExtra(i, { qty: ev.target.value === "" ? "" : Math.max(1, Number(ev.target.value)) })}
+                    placeholder="Qty"
                     className="h-9 text-xs"
                   />
                   <Input
@@ -520,6 +531,11 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
                         {partSizes.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                  </div>
+                )}
+                {(Number(e.qty) || 0) > 1 && e.price !== "" && (
+                  <div className="text-[11px] text-muted-foreground text-right">
+                    Line total: {formatCurrency((Number(e.price) || 0) * (Number(e.qty) || 0))}
                   </div>
                 )}
               </div>
