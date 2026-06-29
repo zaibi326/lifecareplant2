@@ -472,33 +472,52 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
           {extras.length === 0 && (
             <p className="text-xs text-muted-foreground">Valve, spindle, repair valve waghaira add karein.</p>
           )}
-          {extras.map((e, i) => (
-            <div key={i} className="grid grid-cols-[1fr_1fr_90px_auto] gap-1.5 items-center rounded-md bg-muted/30 p-2">
-              <Select value={EXTRA_PRESETS.includes(e.name) ? e.name : "Other"} onValueChange={(v) => updExtra(i, { name: v === "Other" ? "" : v })}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Item" /></SelectTrigger>
-                <SelectContent>
-                  {EXTRA_PRESETS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Input
-                value={EXTRA_PRESETS.includes(e.name) && e.name !== "Other" ? e.name : e.name}
-                onChange={(ev) => updExtra(i, { name: ev.target.value })}
-                placeholder="Name / details"
-                className="h-9 text-xs"
-              />
-              <Input
-                type="number"
-                min={0}
-                value={e.price === "" ? "" : e.price}
-                onChange={(ev) => updExtra(i, { price: ev.target.value === "" ? "" : Number(ev.target.value) })}
-                placeholder="Price"
-                className="h-9 text-xs"
-              />
-              <Button type="button" size="icon" variant="ghost" onClick={() => delExtra(i)} className="size-9">
-                <Trash2 className="size-4 text-destructive" />
-              </Button>
-            </div>
-          ))}
+          {extras.map((e, i) => {
+            const sized = isSized(e.name);
+            return (
+              <div key={i} className="space-y-1.5 rounded-md bg-muted/30 p-2">
+                <div className="grid grid-cols-[1fr_1fr_90px_auto] gap-1.5 items-center">
+                  <Select
+                    value={EXTRA_PRESETS.includes(e.name) ? e.name : "Other"}
+                    onValueChange={(v) => updExtra(i, { name: v === "Other" ? "" : v, size: v === "Valve" || v === "Spindle" ? (e.size ?? PART_SIZES[0]) : undefined })}
+                  >
+                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Item" /></SelectTrigger>
+                    <SelectContent>
+                      {EXTRA_PRESETS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={e.name}
+                    onChange={(ev) => updExtra(i, { name: ev.target.value })}
+                    placeholder="Name / details"
+                    className="h-9 text-xs"
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    value={e.price === "" ? "" : e.price}
+                    onChange={(ev) => updExtra(i, { price: ev.target.value === "" ? "" : Number(ev.target.value) })}
+                    placeholder="Price"
+                    className="h-9 text-xs"
+                  />
+                  <Button type="button" size="icon" variant="ghost" onClick={() => delExtra(i)} className="size-9">
+                    <Trash2 className="size-4 text-destructive" />
+                  </Button>
+                </div>
+                {sized && (
+                  <div className="grid grid-cols-[80px_1fr] gap-1.5 items-center">
+                    <Label className="text-[11px] text-muted-foreground">Size</Label>
+                    <Select value={e.size ?? PART_SIZES[0]} onValueChange={(v) => updExtra(i, { size: v })}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Size" /></SelectTrigger>
+                      <SelectContent>
+                        {PART_SIZES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            );
+          })}
           {extras.length > 0 && (
             <div className="flex items-center justify-between border-t pt-2 mt-2">
               <span className="text-xs uppercase tracking-wider text-muted-foreground">Extras Total</span>
