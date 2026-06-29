@@ -16,10 +16,11 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowDownToLine, ArrowUpFromLine, Plus, Search, Camera, Printer, X, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, Plus, Search, Camera, Printer, X, MoreVertical, Pencil, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { printHTML } from "@/lib/print";
 import { enqueue } from "@/lib/offline-queue";
+import html2canvas from "html2canvas";
 
 type MovType = "receive" | "deliver";
 type LineRow = { gas_type_id: string; cylinder_size_id: string; quantity: number; rate: number };
