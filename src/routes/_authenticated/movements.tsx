@@ -245,14 +245,21 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
   const { data: lookups } = useQuery({
     queryKey: ["movement-lookups"],
     queryFn: async () => {
-      const [c, g, s] = await Promise.all([
+      const [c, g, s, ps] = await Promise.all([
         supabase.from("customers").select("id,name").order("name"),
         supabase.from("gas_types").select("id,name").eq("active", true).order("name"),
         supabase.from("cylinder_sizes").select("id,name").eq("active", true).order("name"),
+        supabase.from("part_sizes").select("label").eq("active", true).order("sort_order").order("label"),
       ]);
-      return { customers: c.data ?? [], gases: g.data ?? [], sizes: s.data ?? [] };
+      return {
+        customers: c.data ?? [],
+        gases: g.data ?? [],
+        sizes: s.data ?? [],
+        partSizes: (ps.data ?? []).map((r: any) => String(r.label)),
+      };
     },
   });
+  const partSizes = lookups?.partSizes?.length ? lookups.partSizes : PART_SIZES;
 
   useEffect(() => {
     if (!isEdit && lines.length === 0 && lookups?.gases?.length && lookups?.sizes?.length) {
