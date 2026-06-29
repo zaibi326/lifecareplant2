@@ -221,7 +221,7 @@ async function printInvoice(input: any | any[], mode: "print" | "jpg" = "print")
   const { data: s } = await supabase.from("settings").select("*").eq("id", 1).maybeSingle();
   const tax = Number(s?.tax_percent ?? 0);
 
-  // Party balance: opening + all delivered - all received (cylinders this party still holds)
+  // Party balance: opening − delivered + received (cylinders this party still holds)
   let partyBalance = 0;
   if (first.customer_id) {
     const [{ data: cust }, { data: moves }] = await Promise.all([
@@ -231,7 +231,8 @@ async function printInvoice(input: any | any[], mode: "print" | "jpg" = "print")
     const op = Number(cust?.opening_cylinders ?? 0);
     const d = (moves ?? []).filter((m: any) => m.type === "deliver").reduce((a: number, m: any) => a + Number(m.quantity || 0), 0);
     const r = (moves ?? []).filter((m: any) => m.type === "receive").reduce((a: number, m: any) => a + Number(m.quantity || 0), 0);
-    partyBalance = Math.max(0, op + d - r);
+    partyBalance = Math.max(0, op - d + r);
+
   }
 
   const cylRows = rows.map((r) => {
