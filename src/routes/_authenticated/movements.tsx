@@ -23,6 +23,8 @@ import { enqueue } from "@/lib/offline-queue";
 
 type MovType = "receive" | "deliver";
 type LineRow = { gas_type_id: string; cylinder_size_id: string; quantity: number; rate: number };
+type ExtraRow = { name: string; price: number | "" };
+const EXTRA_PRESETS = ["Valve", "Spindle", "Repair Valve", "Cap", "O-Ring", "Neck Ring", "Other"];
 
 export const Route = createFileRoute("/_authenticated/movements")({
   validateSearch: (s: Record<string, unknown>) => ({ type: ((s.type as MovType) ?? "receive") as MovType }),
