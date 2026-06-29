@@ -62,7 +62,7 @@ function Dashboard() {
   const allDelivered = sum(all.filter((m: any) => m.type === "deliver"), "quantity");
   const plantStock = Math.max(0, allReceived - allDelivered);
 
-  // Per-party outstanding cylinders = opening + delivered − received (clamped ≥ 0)
+  // Per-party outstanding cylinders = opening − delivered + received (clamped ≥ 0)
   const partyMap = new Map<string, { name: string; out: number }>();
   for (const c of (data?.customers ?? [])) {
     partyMap.set(c.id, { name: c.name ?? "Customer", out: Number(c.opening_cylinders ?? 0) });
@@ -71,10 +71,11 @@ function Dashboard() {
     if (!m.customer_id) continue;
     const e = partyMap.get(m.customer_id) ?? { name: m.customers?.name ?? "Customer", out: 0 };
     const qty = Number(m.quantity ?? 0);
-    if (m.type === "deliver") e.out += qty;
-    else if (m.type === "receive") e.out -= qty;
+    if (m.type === "deliver") e.out -= qty;
+    else if (m.type === "receive") e.out += qty;
     partyMap.set(m.customer_id, e);
   }
+
   const partyBalances = Array.from(partyMap.values()).map((p) => ({ ...p, out: Math.max(0, p.out) })).filter((p) => p.out > 0).sort((a, b) => b.out - a.out);
   const withCustomers = partyBalances.reduce((a, p) => a + p.out, 0);
 
