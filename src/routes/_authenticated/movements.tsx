@@ -486,42 +486,57 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
             const sized = isSized(e.name);
             return (
               <div key={i} className="space-y-1.5 rounded-md bg-muted/30 p-2">
-                <div className="grid grid-cols-[1fr_1fr_60px_80px_auto] gap-1.5 items-center">
-                  <Select
-                    value={EXTRA_PRESETS.includes(e.name) ? e.name : "Other"}
-                    onValueChange={(v) => updExtra(i, { name: v === "Other" ? "" : v, size: v === "Valve" || v === "Spindle" ? (e.size ?? partSizes[0]) : undefined })}
-                  >
-                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Item" /></SelectTrigger>
-                    <SelectContent>
-                      {EXTRA_PRESETS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    value={e.name}
-                    onChange={(ev) => updExtra(i, { name: ev.target.value })}
-                    placeholder="Name / details"
-                    className="h-9 text-xs"
-                  />
-                  <Input
-                    type="number"
-                    min={1}
-                    value={e.qty === "" ? "" : e.qty}
-                    onChange={(ev) => updExtra(i, { qty: ev.target.value === "" ? "" : Math.max(1, Number(ev.target.value)) })}
-                    placeholder="Qty"
-                    className="h-9 text-xs"
-                  />
-                  <Input
-                    type="number"
-                    min={0}
-                    value={e.price === "" ? "" : e.price}
-                    onChange={(ev) => updExtra(i, { price: ev.target.value === "" ? "" : Number(ev.target.value) })}
-                    placeholder="Price"
-                    className="h-9 text-xs"
-                  />
-                  <Button type="button" size="icon" variant="ghost" onClick={() => delExtra(i)} className="size-9">
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
+                <div className="grid grid-cols-12 gap-1.5 items-end">
+                  <div className="col-span-5">
+                    <Label className="text-[10px] text-muted-foreground">Item</Label>
+                    <Select
+                      value={EXTRA_PRESETS.includes(e.name) ? e.name : "Other"}
+                      onValueChange={(v) => updExtra(i, { name: v === "Other" ? "" : v, size: v === "Valve" || v === "Spindle" ? (e.size ?? partSizes[0]) : undefined })}
+                    >
+                      <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Item" /></SelectTrigger>
+                      <SelectContent>
+                        {EXTRA_PRESETS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-7">
+                    <Label className="text-[10px] text-muted-foreground">Name / details</Label>
+                    <Input
+                      value={e.name}
+                      onChange={(ev) => updExtra(i, { name: ev.target.value })}
+                      placeholder="Name / details"
+                      className="h-9 text-xs"
+                    />
+                  </div>
+                  <div className="col-span-4">
+                    <Label className="text-[10px] text-muted-foreground">Qty</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={e.qty === "" ? "" : e.qty}
+                      onChange={(ev) => updExtra(i, { qty: ev.target.value === "" ? "" : Math.max(1, Number(ev.target.value)) })}
+                      placeholder="Qty"
+                      className="h-9 text-xs"
+                    />
+                  </div>
+                  <div className="col-span-6">
+                    <Label className="text-[10px] text-muted-foreground">Price</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={e.price === "" ? "" : e.price}
+                      onChange={(ev) => updExtra(i, { price: ev.target.value === "" ? "" : Number(ev.target.value) })}
+                      placeholder="Price"
+                      className="h-9 text-xs"
+                    />
+                  </div>
+                  <div className="col-span-2 flex justify-end">
+                    <Button type="button" size="icon" variant="ghost" onClick={() => delExtra(i)} className="size-9">
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
+
                 {sized && (
                   <div className="grid grid-cols-[80px_1fr] gap-1.5 items-center">
                     <Label className="text-[11px] text-muted-foreground">Size</Label>
