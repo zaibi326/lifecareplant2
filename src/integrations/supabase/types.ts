@@ -432,6 +432,7 @@ export type Database = {
           id: number
           invoice_footer: string | null
           invoice_prefix: string | null
+          plant_opening_stock: number
           tax_percent: number | null
           updated_at: string
         }
@@ -443,6 +444,7 @@ export type Database = {
           id?: number
           invoice_footer?: string | null
           invoice_prefix?: string | null
+          plant_opening_stock?: number
           tax_percent?: number | null
           updated_at?: string
         }
@@ -454,6 +456,7 @@ export type Database = {
           id?: number
           invoice_footer?: string | null
           invoice_prefix?: string | null
+          plant_opening_stock?: number
           tax_percent?: number | null
           updated_at?: string
         }

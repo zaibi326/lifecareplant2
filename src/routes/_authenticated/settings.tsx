@@ -254,6 +254,7 @@ function CompanyForm() {
       invoice_prefix: String(f.get("invoice_prefix") ?? "").trim() || null,
       invoice_footer: String(f.get("invoice_footer") ?? "").trim() || null,
       tax_percent: Number(f.get("tax_percent") ?? 0),
+      plant_opening_stock: Math.max(0, Number(f.get("plant_opening_stock") ?? 0) || 0),
     });
   };
 
@@ -268,10 +269,11 @@ function CompanyForm() {
           <Label className="text-xs">Address</Label>
           <Textarea name="company_address" defaultValue={data?.company_address ?? ""} rows={2} className="mt-1.5" />
         </div>
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-4 gap-4">
           <Field label="Currency" name="currency" defaultValue={data?.currency ?? "Rs"} />
           <Field label="Invoice Prefix" name="invoice_prefix" defaultValue={data?.invoice_prefix ?? "INV-"} />
           <Field label="Tax %" name="tax_percent" type="number" defaultValue={String(data?.tax_percent ?? 0)} />
+          <Field label="Plant Opening Stock" name="plant_opening_stock" type="number" defaultValue={String(data?.plant_opening_stock ?? 0)} />
         </div>
         <div>
           <Label className="text-xs">Invoice Footer</Label>

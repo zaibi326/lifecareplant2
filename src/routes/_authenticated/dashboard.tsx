@@ -24,14 +24,26 @@ function Dashboard() {
     queryFn: async () => {
       const today = todayISO();
       const since = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
-      const [movements, payments, production, customers, gases] = await Promise.all([
+      const [movements, payments, production, customers, gases, allMoves, allPays, settings] = await Promise.all([
         supabase.from("cylinder_movements").select("type,date,quantity,total_amount,customer_id,gas_type_id,cylinder_size_id,vehicle_number,driver_name,invoice_number,created_at,customers(name),gas_types(name,color)").gte("date", since).order("created_at", { ascending: false }),
         supabase.from("payments").select("amount,date,customer_id,created_at,customers(name)").gte("date", since).order("created_at", { ascending: false }),
         supabase.from("production").select("quantity,date").eq("date", today),
         supabase.from("customers").select("id,opening_cylinders,opening_due"),
         supabase.from("gas_types").select("id,name,color").eq("active", true),
+        supabase.from("cylinder_movements").select("type,quantity,total_amount"),
+        supabase.from("payments").select("amount"),
+        supabase.from("settings").select("plant_opening_stock").eq("id", 1).maybeSingle(),
       ]);
-      return { movements: movements.data ?? [], payments: payments.data ?? [], production: production.data ?? [], customers: customers.data ?? [], gases: gases.data ?? [] };
+      return {
+        movements: movements.data ?? [],
+        payments: payments.data ?? [],
+        production: production.data ?? [],
+        customers: customers.data ?? [],
+        gases: gases.data ?? [],
+        allMoves: allMoves.data ?? [],
+        allPays: allPays.data ?? [],
+        plantOpening: Number(settings.data?.plant_opening_stock ?? 0),
+      };
     },
   });
 
@@ -45,17 +57,19 @@ function Dashboard() {
   const todayProduction = sum(data?.production ?? [], "quantity");
   const todayPayments = sum(pays.filter((p: any) => p.date === today), "amount");
 
-  // Plant stock = received - delivered (across all time visible) + opening adjustments are with customers
-  const allReceived = sum(movs.filter((m: any) => m.type === "receive"), "quantity");
-  const allDelivered = sum(movs.filter((m: any) => m.type === "deliver"), "quantity");
+  // Plant stock = plant opening + all-time received - all-time delivered
+  const all = data?.allMoves ?? [];
+  const allReceived = sum(all.filter((m: any) => m.type === "receive"), "quantity");
+  const allDelivered = sum(all.filter((m: any) => m.type === "deliver"), "quantity");
 
   const customerOpening = sum(data?.customers ?? [], "opening_cylinders");
-  const withCustomers = customerOpening + allDelivered - allReceived;
-  const plantStock = Math.max(0, allReceived - allDelivered);
+  const plantOpening = Number(data?.plantOpening ?? 0);
+  const withCustomers = Math.max(0, customerOpening + allDelivered - allReceived);
+  const plantStock = Math.max(0, plantOpening + allReceived - allDelivered);
 
   const openingDue = sum(data?.customers ?? [], "opening_due");
-  const billed = sum(movs.filter((m: any) => m.type === "deliver"), "total_amount");
-  const paid = sum(pays, "amount");
+  const billed = sum(all.filter((m: any) => m.type === "deliver"), "total_amount");
+  const paid = sum(data?.allPays ?? [], "amount");
   const outstanding = Math.max(0, openingDue + billed - paid);
 
   // Build 14-day chart
