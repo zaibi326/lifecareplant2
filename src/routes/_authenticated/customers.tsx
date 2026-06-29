@@ -91,8 +91,7 @@ function CustomersPage() {
       (ms ?? []).forEach((m: any) => {
         if (!m.cylinder_size_id) return;
         const cur = sizeMap.get(m.cylinder_size_id) ?? 0;
-        const q = Number(m.quantity ?? 0);
-        sizeMap.set(m.cylinder_size_id, cur + (m.type === "deliver" ? q : -q));
+        sizeMap.set(m.cylinder_size_id, cur + Number(m.quantity ?? 0));
       });
       const sizeBreakdown = (szs ?? []).map((s: any) => ({ name: s.name, qty: sizeMap.get(s.id) ?? 0 }));
 
