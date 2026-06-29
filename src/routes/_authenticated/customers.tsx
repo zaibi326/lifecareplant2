@@ -87,18 +87,28 @@ function CustomersPage() {
       });
 
       // Per-size breakdown across all customers (opening + received − delivered)
-      const sizeMap = new Map<string, number>();
+      const sizeMap = new Map<string, { opening: number; received: number; delivered: number }>();
+      const ensure = (id: string) => {
+        let v = sizeMap.get(id);
+        if (!v) { v = { opening: 0, received: 0, delivered: 0 }; sizeMap.set(id, v); }
+        return v;
+      };
       (obs ?? []).forEach((o: any) => {
         if (!o.cylinder_size_id) return;
-        sizeMap.set(o.cylinder_size_id, (sizeMap.get(o.cylinder_size_id) ?? 0) + Number(o.quantity ?? 0));
+        ensure(o.cylinder_size_id).opening += Number(o.quantity ?? 0);
       });
       (ms ?? []).forEach((m: any) => {
         if (!m.cylinder_size_id) return;
-        const cur = sizeMap.get(m.cylinder_size_id) ?? 0;
         const qty = Number(m.quantity ?? 0);
-        sizeMap.set(m.cylinder_size_id, cur + (m.type === "deliver" ? -qty : qty));
+        const v = ensure(m.cylinder_size_id);
+        if (m.type === "deliver") v.delivered += qty;
+        else v.received += qty;
       });
-      const sizeBreakdown = (szs ?? []).map((s: any) => ({ name: s.name, qty: sizeMap.get(s.id) ?? 0 }));
+      const sizeBreakdown = (szs ?? []).map((s: any) => {
+        const v = sizeMap.get(s.id) ?? { opening: 0, received: 0, delivered: 0 };
+        return { name: s.name, ...v, qty: v.opening + v.received - v.delivered };
+      });
+
 
       return { rows: (cs ?? []).map((c) => ({ ...c, balance: map.get(c.id)! })), sizeBreakdown };
     },
@@ -293,16 +303,32 @@ function CustomersPage() {
       </div>
 
       <Dialog open={breakdownOpen} onOpenChange={setBreakdownOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Cylinders by Size</DialogTitle></DialogHeader>
           <div className="space-y-2 mt-2">
             {(data?.sizeBreakdown ?? []).length === 0 && (
               <p className="text-sm text-muted-foreground">Koi size configured nahi.</p>
             )}
             {(data?.sizeBreakdown ?? []).map((s: any) => (
-              <div key={s.name} className="flex items-center justify-between rounded-lg border p-3">
-                <span className="text-sm font-semibold">{s.name}</span>
-                <span className="font-display font-bold text-lg">{Number(s.qty).toLocaleString()}</span>
+              <div key={s.name} className="rounded-lg border p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold">{s.name}</span>
+                  <span className="font-display font-bold text-lg">{Number(s.qty).toLocaleString()}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-[11px]">
+                  <div className="rounded bg-muted/60 p-1.5 text-center">
+                    <div className="text-muted-foreground uppercase tracking-wider">Opening</div>
+                    <div className="font-bold text-sm">{Number(s.opening).toLocaleString()}</div>
+                  </div>
+                  <div className="rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 p-1.5 text-center">
+                    <div className="uppercase tracking-wider">+ Received</div>
+                    <div className="font-bold text-sm">{Number(s.received).toLocaleString()}</div>
+                  </div>
+                  <div className="rounded bg-destructive/10 text-destructive p-1.5 text-center">
+                    <div className="uppercase tracking-wider">− Delivered</div>
+                    <div className="font-bold text-sm">{Number(s.delivered).toLocaleString()}</div>
+                  </div>
+                </div>
               </div>
             ))}
             <div className="flex items-center justify-between rounded-lg bg-muted p-3 mt-3">
@@ -312,6 +338,7 @@ function CustomersPage() {
           </div>
         </DialogContent>
       </Dialog>
+
 
       <div className="relative">
         <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
