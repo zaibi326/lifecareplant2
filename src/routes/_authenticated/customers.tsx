@@ -35,6 +35,7 @@ function CustomersPage() {
   const [editing, setEditing] = useState<EditState>(null);
   const [openRows, setOpenRows] = useState<OpenRow[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
 
   const { data: refs } = useQuery({
     queryKey: ["customer-form-refs"],
