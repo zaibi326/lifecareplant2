@@ -24,15 +24,14 @@ function Dashboard() {
     queryFn: async () => {
       const today = todayISO();
       const since = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
-      const [movements, payments, production, customers, gases, allMoves, allPays, settings] = await Promise.all([
+      const [movements, payments, production, customers, gases, allMoves, allPays] = await Promise.all([
         supabase.from("cylinder_movements").select("type,date,quantity,total_amount,customer_id,gas_type_id,cylinder_size_id,vehicle_number,driver_name,invoice_number,created_at,customers(name),gas_types(name,color)").gte("date", since).order("created_at", { ascending: false }),
         supabase.from("payments").select("amount,date,customer_id,created_at,customers(name)").gte("date", since).order("created_at", { ascending: false }),
         supabase.from("production").select("quantity,date").eq("date", today),
-        supabase.from("customers").select("id,opening_cylinders,opening_due"),
+        supabase.from("customers").select("id,name,opening_cylinders,opening_due"),
         supabase.from("gas_types").select("id,name,color").eq("active", true),
         supabase.from("cylinder_movements").select("type,quantity,total_amount,customer_id,customers(name)"),
         supabase.from("payments").select("amount"),
-        supabase.from("settings").select("plant_opening_stock").eq("id", 1).maybeSingle(),
       ]);
       return {
         movements: movements.data ?? [],
@@ -42,7 +41,6 @@ function Dashboard() {
         gases: gases.data ?? [],
         allMoves: allMoves.data ?? [],
         allPays: allPays.data ?? [],
-        plantOpening: Number(settings.data?.plant_opening_stock ?? 0),
       };
     },
   });
@@ -57,18 +55,18 @@ function Dashboard() {
   const todayProduction = sum(data?.production ?? [], "quantity");
   const todayPayments = sum(pays.filter((p: any) => p.date === today), "amount");
 
-  // Plant stock = plant opening + all-time received - all-time delivered
-  // With customers = all-time delivered - all-time received (cylinders abhi parties ke pass)
+  // Plant stock = received − delivered (opening cylinders har customer ke saath count hote hain, plant mein nahi)
+  // With customers = har party ka opening + delivered − received (clamped)
   const all = data?.allMoves ?? [];
   const allReceived = sum(all.filter((m: any) => m.type === "receive"), "quantity");
   const allDelivered = sum(all.filter((m: any) => m.type === "deliver"), "quantity");
+  const plantStock = Math.max(0, allReceived - allDelivered);
 
-  const plantOpening = Number(data?.plantOpening ?? 0);
-  const withCustomers = Math.max(0, allDelivered - allReceived);
-  const plantStock = Math.max(0, plantOpening + allReceived - allDelivered);
-
-  // Per-party outstanding cylinders (delivered − received per customer)
+  // Per-party outstanding cylinders = opening + delivered − received (clamped ≥ 0)
   const partyMap = new Map<string, { name: string; out: number }>();
+  for (const c of (data?.customers ?? [])) {
+    partyMap.set(c.id, { name: c.name ?? "Customer", out: Number(c.opening_cylinders ?? 0) });
+  }
   for (const m of all) {
     if (!m.customer_id) continue;
     const e = partyMap.get(m.customer_id) ?? { name: m.customers?.name ?? "Customer", out: 0 };
@@ -77,7 +75,8 @@ function Dashboard() {
     else if (m.type === "receive") e.out -= qty;
     partyMap.set(m.customer_id, e);
   }
-  const partyBalances = Array.from(partyMap.values()).filter((p) => p.out > 0).sort((a, b) => b.out - a.out);
+  const partyBalances = Array.from(partyMap.values()).map((p) => ({ ...p, out: Math.max(0, p.out) })).filter((p) => p.out > 0).sort((a, b) => b.out - a.out);
+  const withCustomers = partyBalances.reduce((a, p) => a + p.out, 0);
 
   const openingDue = sum(data?.customers ?? [], "opening_due");
   const billed = sum(all.filter((m: any) => m.type === "deliver"), "total_amount");
