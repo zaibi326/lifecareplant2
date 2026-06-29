@@ -72,8 +72,9 @@ function CustomersPage() {
       (ms ?? []).forEach((m: any) => {
         const e = map.get(m.customer_id);
         if (!e) return;
-        if (m.type === "deliver") { e.out += Number(m.quantity ?? 0); e.due += Number(m.total_amount ?? 0); }
-        else { e.out -= Number(m.quantity ?? 0); }
+        // Opening + delivered + received all add up to total cylinders associated with the customer
+        e.out += Number(m.quantity ?? 0);
+        if (m.type === "deliver") { e.due += Number(m.total_amount ?? 0); }
       });
       (ps ?? []).forEach((p: any) => {
         const e = map.get(p.customer_id);
