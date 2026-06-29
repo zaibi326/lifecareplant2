@@ -16,10 +16,11 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowDownToLine, ArrowUpFromLine, Plus, Search, Camera, Printer, X, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, Plus, Search, Camera, Printer, X, MoreVertical, Pencil, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { printHTML } from "@/lib/print";
 import { enqueue } from "@/lib/offline-queue";
+import html2canvas from "html2canvas";
 
 type MovType = "receive" | "deliver";
 type LineRow = { gas_type_id: string; cylinder_size_id: string; quantity: number; rate: number };
@@ -168,9 +169,14 @@ function MovementsPage() {
                 <div className="font-display font-bold">{totalQty}</div>
                 {type === "deliver" && <Badge variant="secondary" className="text-[10px]">{formatCurrency(totalAmt)}</Badge>}
                 {type === "deliver" && (
-                  <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs" onClick={() => printInvoice(rows)}>
-                    <Printer className="size-3" /> Invoice
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs" onClick={() => printInvoice(rows, "print")}>
+                      <Printer className="size-3" /> Invoice
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs" onClick={() => printInvoice(rows, "jpg")}>
+                      <Download className="size-3" /> JPG
+                    </Button>
+                  </div>
                 )}
               </div>
               <DropdownMenu>
@@ -209,11 +215,24 @@ function MovementsPage() {
   );
 }
 
-async function printInvoice(input: any | any[]) {
+async function printInvoice(input: any | any[], mode: "print" | "jpg" = "print") {
   const rows: any[] = Array.isArray(input) ? input : [input];
   const first = rows[0];
   const { data: s } = await supabase.from("settings").select("*").eq("id", 1).maybeSingle();
   const tax = Number(s?.tax_percent ?? 0);
+
+  // Party balance: opening + all delivered - all received (cylinders this party still holds)
+  let partyBalance = 0;
+  if (first.customer_id) {
+    const [{ data: cust }, { data: moves }] = await Promise.all([
+      supabase.from("customers").select("opening_cylinders").eq("id", first.customer_id).maybeSingle(),
+      supabase.from("cylinder_movements").select("type,quantity").eq("customer_id", first.customer_id),
+    ]);
+    const op = Number(cust?.opening_cylinders ?? 0);
+    const d = (moves ?? []).filter((m: any) => m.type === "deliver").reduce((a: number, m: any) => a + Number(m.quantity || 0), 0);
+    const r = (moves ?? []).filter((m: any) => m.type === "receive").reduce((a: number, m: any) => a + Number(m.quantity || 0), 0);
+    partyBalance = Math.max(0, op + d - r);
+  }
 
   const cylRows = rows.map((r) => {
     const amt = Number(r.quantity || 0) * Number(r.rate || 0);
@@ -234,13 +253,17 @@ async function printInvoice(input: any | any[]) {
   const taxAmt = sub * tax / 100;
   const grand = sub + taxAmt;
 
-  printHTML(`Invoice ${first.invoice_number ?? ""}`, `
+  const billNos = Array.from(new Set(rows.map((r) => r.bill_number).filter(Boolean))).join(", ");
+  const ecrNos = Array.from(new Set(rows.map((r) => r.ecr_number).filter(Boolean))).join(", ");
+
+  const body = `
     <div class="head">
       <div><h1>${s?.company_name ?? "Life Care Plant"}</h1><div class="muted">${s?.company_address ?? ""}</div><div class="muted">${s?.company_phone ?? ""}</div></div>
-      <div style="text-align:right"><span class="badge">INVOICE</span><div style="margin-top:8px;font-weight:700">${first.invoice_number ?? ""}</div><div class="muted">${formatDate(first.date)}</div></div>
+      <div style="text-align:right"><span class="badge">INVOICE</span><div style="margin-top:8px;font-weight:700">${first.invoice_number ?? ""}</div><div class="muted">${formatDate(first.date)}</div>${billNos ? `<div class="muted">Bill #: ${billNos}</div>` : ""}${ecrNos ? `<div class="muted">ECR #: ${ecrNos}</div>` : ""}</div>
     </div>
     <h2>Bill To</h2>
     <div style="font-weight:600">${first.customers?.name ?? ""}</div>
+    <div class="muted">Cylinders with party (balance): <b>${partyBalance}</b></div>
     <h2>Items</h2>
     <table><thead><tr><th>Description</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Amount</th></tr></thead>
     <tbody>${cylRows}${extraRows}</tbody></table>
@@ -251,7 +274,41 @@ async function printInvoice(input: any | any[]) {
     </div>
     ${first.vehicle_number ? `<div class="muted" style="margin-top:16px">Vehicle: ${first.vehicle_number}${first.driver_name ? ` • Driver: ${first.driver_name}` : ""}</div>` : ""}
     ${s?.invoice_footer ? `<div class="muted" style="margin-top:24px;border-top:1px solid #e2e8f0;padding-top:12px">${s.invoice_footer}</div>` : ""}
-  `);
+  `;
+
+  if (mode === "print") {
+    printHTML(`Invoice ${first.invoice_number ?? ""}`, body);
+    return;
+  }
+
+  // JPG mode — render off-screen, snapshot with html2canvas, trigger download
+  const host = document.createElement("div");
+  host.style.cssText = "position:fixed;left:-10000px;top:0;width:800px;background:#fff;padding:32px;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#0f172a;";
+  host.innerHTML = `<style>
+    h1{font-size:22px;margin:0 0 4px} h2{font-size:14px;margin:24px 0 8px;letter-spacing:.06em;text-transform:uppercase;color:#64748b}
+    .muted{color:#64748b;font-size:12px} table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
+    th,td{padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:left} th{background:#f8fafc;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#475569}
+    .right{text-align:right} .totals{margin-top:16px;display:flex;justify-content:flex-end;gap:32px;font-size:14px}
+    .totals .label{color:#64748b} .totals .val{font-weight:700}
+    .head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;border-bottom:2px solid #0f172a;padding-bottom:16px}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#0f172a;color:#fff;font-size:11px}
+  </style>${body}`;
+  document.body.appendChild(host);
+  try {
+    const canvas = await html2canvas(host, { backgroundColor: "#ffffff", scale: 2 });
+    const url = canvas.toDataURL("image/jpeg", 0.95);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Invoice-${first.invoice_number ?? first.id}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast.success("Invoice JPG downloaded");
+  } catch (e: any) {
+    toast.error(e?.message || "Failed to generate JPG");
+  } finally {
+    host.remove();
+  }
 }
 
 function MovementForm({ type, editing, onDone }: { type: MovType; editing: any | null; onDone: () => void }) {
