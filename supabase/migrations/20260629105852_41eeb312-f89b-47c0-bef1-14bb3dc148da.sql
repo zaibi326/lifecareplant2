@@ -1,0 +1,1 @@
+ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS plant_opening_stock integer NOT NULL DEFAULT 0;
