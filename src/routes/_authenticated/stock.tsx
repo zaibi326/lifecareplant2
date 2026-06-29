@@ -150,7 +150,7 @@ function StockPage() {
   );
 }
 
-function PartsStockSection({ parts, usedMap, onChanged }: { parts: any[]; usedMap: Map<string, number>; onChanged: () => void }) {
+function PartsStockSection({ parts, partSizes, usedMap, onChanged }: { parts: any[]; partSizes: string[]; usedMap: Map<string, number>; onChanged: () => void }) {
   const [addOpen, setAddOpen] = useState(false);
 
   const upsert = useMutation({
