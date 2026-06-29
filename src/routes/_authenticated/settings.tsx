@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Building2, Flame, Package, Users, KeyRound, ShieldCheck } from "lucide-react";
+import { Plus, Trash2, Building2, Flame, Package, Users, KeyRound, ShieldCheck, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { listStaff, createStaff, updateStaffRole, deleteStaff, resetStaffPassword } from "@/lib/staff.functions";
 
@@ -40,10 +40,11 @@ function SettingsPage() {
       </header>
 
       <Tabs defaultValue="company" className="w-full">
-        <TabsList className={`grid ${isAdmin ? "grid-cols-5" : "grid-cols-4"} w-full h-11`}>
+        <TabsList className={`grid ${isAdmin ? "grid-cols-6" : "grid-cols-5"} w-full h-11`}>
           <TabsTrigger value="company" className="gap-2"><Building2 className="size-4" /> Company</TabsTrigger>
           <TabsTrigger value="gases" className="gap-2"><Flame className="size-4" /> Gases</TabsTrigger>
           <TabsTrigger value="sizes" className="gap-2"><Package className="size-4" /> Sizes</TabsTrigger>
+          <TabsTrigger value="parts" className="gap-2"><Wrench className="size-4" /> Parts</TabsTrigger>
           <TabsTrigger value="permissions" className="gap-2"><ShieldCheck className="size-4" /> Roles</TabsTrigger>
           {isAdmin && <TabsTrigger value="staff" className="gap-2"><Users className="size-4" /> Staff</TabsTrigger>}
         </TabsList>
@@ -51,6 +52,7 @@ function SettingsPage() {
         <TabsContent value="company" className="mt-5"><CompanyForm /></TabsContent>
         <TabsContent value="gases" className="mt-5"><GasTypesPanel /></TabsContent>
         <TabsContent value="sizes" className="mt-5"><SizesPanel /></TabsContent>
+        <TabsContent value="parts" className="mt-5"><PartSizesPanel /></TabsContent>
         <TabsContent value="permissions" className="mt-5"><PermissionsMatrix /></TabsContent>
         {isAdmin && <TabsContent value="staff" className="mt-5"><StaffPanel /></TabsContent>}
       </Tabs>
@@ -407,6 +409,108 @@ function SizesPanel() {
           </div>
         ))}
         {(data ?? []).length === 0 && <div className="py-4 text-sm text-muted-foreground">No sizes yet.</div>}
+      </div>
+    </Card>
+  );
+}
+
+function PartSizesPanel() {
+  const qc = useQueryClient();
+  const [label, setLabel] = useState("");
+
+  const { data } = useQuery({
+    queryKey: ["part_sizes_all"],
+    queryFn: async () => (await supabase.from("part_sizes").select("*").order("sort_order").order("label")).data ?? [],
+  });
+
+  const partsStock = useQuery({
+    queryKey: ["parts_stock_for_settings"],
+    queryFn: async () => (await supabase.from("parts_stock").select("kind,size,quantity")).data ?? [],
+  });
+
+  const stockBySize = new Map<string, { valve: number; spindle: number }>();
+  for (const p of partsStock.data ?? []) {
+    const cur = stockBySize.get(p.size) ?? { valve: 0, spindle: 0 };
+    if (p.kind === "valve") cur.valve += Number(p.quantity ?? 0);
+    if (p.kind === "spindle") cur.spindle += Number(p.quantity ?? 0);
+    stockBySize.set(p.size, cur);
+  }
+
+  const create = useMutation({
+    mutationFn: async () => {
+      if (!label.trim()) throw new Error("Label required");
+      const sort_order = ((data ?? []).reduce((m: number, r: any) => Math.max(m, Number(r.sort_order ?? 0)), 0)) + 10;
+      const { error } = await supabase.from("part_sizes").insert({ label: label.trim(), sort_order, active: true });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Size added"); setLabel(""); qc.invalidateQueries({ queryKey: ["part_sizes_all"] }); qc.invalidateQueries({ queryKey: ["part_sizes"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const toggle = useMutation({
+    mutationFn: async (row: any) => {
+      const { error } = await supabase.from("part_sizes").update({ active: !row.active }).eq("id", row.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["part_sizes_all"] }); qc.invalidateQueries({ queryKey: ["part_sizes"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("part_sizes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["part_sizes_all"] }); qc.invalidateQueries({ queryKey: ["part_sizes"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Card className="p-5 space-y-4">
+      <div>
+        <h3 className="font-semibold text-sm">Valve / Spindle Sizes</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Yahan jo sizes add karein gy, wo deliver entry aur Stock tab dono mein dropdown mein aein gy.</p>
+      </div>
+      <div className="grid grid-cols-[1fr_auto] gap-2">
+        <Input placeholder='e.g. 1.30"' value={label} onChange={(e) => setLabel(e.target.value)} className="h-11" />
+        <Button onClick={() => create.mutate()} disabled={create.isPending} className="h-11 gap-2"><Plus className="size-4" /> Add</Button>
+      </div>
+      <div className="divide-y">
+        {(data ?? []).map((s: any) => {
+          const st = stockBySize.get(s.label) ?? { valve: 0, spindle: 0 };
+          return (
+            <div key={s.id} className="py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-semibold flex items-center gap-2">
+                  {s.label}
+                  {!s.active && <Badge variant="secondary" className="text-[10px]">inactive</Badge>}
+                </div>
+                <div className="text-xs text-muted-foreground">Valve stock: {st.valve} • Spindle stock: {st.spindle}</div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => toggle.mutate(s)}>
+                  {s.active ? "Disable" : "Enable"}
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="size-8"><Trash2 className="size-4 text-destructive" /></Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete size {s.label}?</AlertDialogTitle>
+                      <AlertDialogDescription>Iss size ka parts stock bhi affect ho sakta hai. Disable karna safer hai.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => remove.mutate(s.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          );
+        })}
+        {(data ?? []).length === 0 && <div className="py-4 text-sm text-muted-foreground">No part sizes yet.</div>}
       </div>
     </Card>
   );

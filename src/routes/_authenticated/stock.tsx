@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { todayISO } from "@/lib/format";
 
 const PART_KINDS = ["valve", "spindle"] as const;
-const PART_SIZES = ['1"', '1.15"', '1.30"', '1.45"', '2"'];
+const DEFAULT_PART_SIZES = ['1"', '1.15"', '1.30"', '1.45"', '2"'];
 
 export const Route = createFileRoute("/_authenticated/stock")({
   head: () => ({ meta: [{ title: "Stock — GasFlow Pro" }] }),
@@ -24,13 +24,14 @@ function StockPage() {
     queryKey: ["stock"],
     queryFn: async () => {
       const today = todayISO();
-      const [gases, sizes, movements, openings, production, parts] = await Promise.all([
+      const [gases, sizes, movements, openings, production, parts, partSizes] = await Promise.all([
         supabase.from("gas_types").select("id,name,color").eq("active", true).order("name"),
         supabase.from("cylinder_sizes").select("id,name").eq("active", true).order("name"),
         supabase.from("cylinder_movements").select("type,quantity,gas_type_id,cylinder_size_id,date,extras"),
         supabase.from("customer_opening_balances").select("quantity,gas_type_id,cylinder_size_id,condition"),
         supabase.from("production").select("quantity,date").eq("date", today),
         supabase.from("parts_stock").select("*").order("kind").order("size"),
+        supabase.from("part_sizes").select("label").eq("active", true).order("sort_order").order("label"),
       ]);
       return {
         gases: gases.data ?? [],
@@ -39,6 +40,7 @@ function StockPage() {
         openings: openings.data ?? [],
         production: production.data ?? [],
         parts: parts.data ?? [],
+        partSizes: (partSizes.data ?? []).map((r: any) => String(r.label)),
       };
     },
   });
@@ -140,6 +142,7 @@ function StockPage() {
 
       <PartsStockSection
         parts={data?.parts ?? []}
+        partSizes={data?.partSizes?.length ? data.partSizes : DEFAULT_PART_SIZES}
         usedMap={partsUsed}
         onChanged={() => qc.invalidateQueries({ queryKey: ["stock"] })}
       />
@@ -147,7 +150,7 @@ function StockPage() {
   );
 }
 
-function PartsStockSection({ parts, usedMap, onChanged }: { parts: any[]; usedMap: Map<string, number>; onChanged: () => void }) {
+function PartsStockSection({ parts, partSizes, usedMap, onChanged }: { parts: any[]; partSizes: string[]; usedMap: Map<string, number>; onChanged: () => void }) {
   const [addOpen, setAddOpen] = useState(false);
 
   const upsert = useMutation({
@@ -178,7 +181,7 @@ function PartsStockSection({ parts, usedMap, onChanged }: { parts: any[]; usedMa
       </div>
 
       {addOpen && (
-        <AddPartForm onSubmit={(row) => upsert.mutate(row)} pending={upsert.isPending} />
+        <AddPartForm partSizes={partSizes} onSubmit={(row) => upsert.mutate(row)} pending={upsert.isPending} />
       )}
 
       {parts.length === 0 && !addOpen && (
@@ -205,9 +208,9 @@ function PartsStockSection({ parts, usedMap, onChanged }: { parts: any[]; usedMa
   );
 }
 
-function AddPartForm({ onSubmit, pending }: { onSubmit: (r: { kind: string; size: string; quantity: number }) => void; pending: boolean }) {
+function AddPartForm({ partSizes, onSubmit, pending }: { partSizes: string[]; onSubmit: (r: { kind: string; size: string; quantity: number }) => void; pending: boolean }) {
   const [kind, setKind] = useState<string>("valve");
-  const [size, setSize] = useState<string>(PART_SIZES[0]);
+  const [size, setSize] = useState<string>(partSizes[0] ?? DEFAULT_PART_SIZES[0]);
   const [qty, setQty] = useState<number>(0);
   return (
     <Card className="p-3 mb-2">
@@ -221,7 +224,7 @@ function AddPartForm({ onSubmit, pending }: { onSubmit: (r: { kind: string; size
         <div>
           <label className="text-[11px] text-muted-foreground">Size</label>
           <select value={size} onChange={(e) => setSize(e.target.value)} className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm">
-            {PART_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+            {partSizes.map((s: string) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>

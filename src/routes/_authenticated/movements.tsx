@@ -237,7 +237,7 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
         }))
       : [],
   );
-  const addExtra = () => setExtras((r) => [...r, { name: EXTRA_PRESETS[0], price: "", size: PART_SIZES[0] }]);
+  const addExtra = () => setExtras((r) => [...r, { name: EXTRA_PRESETS[0], price: "", size: partSizes[0] }]);
   const updExtra = (i: number, patch: Partial<ExtraRow>) =>
     setExtras((r) => r.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
   const delExtra = (i: number) => setExtras((r) => r.filter((_, idx) => idx !== i));
@@ -245,14 +245,21 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
   const { data: lookups } = useQuery({
     queryKey: ["movement-lookups"],
     queryFn: async () => {
-      const [c, g, s] = await Promise.all([
+      const [c, g, s, ps] = await Promise.all([
         supabase.from("customers").select("id,name").order("name"),
         supabase.from("gas_types").select("id,name").eq("active", true).order("name"),
         supabase.from("cylinder_sizes").select("id,name").eq("active", true).order("name"),
+        supabase.from("part_sizes").select("label").eq("active", true).order("sort_order").order("label"),
       ]);
-      return { customers: c.data ?? [], gases: g.data ?? [], sizes: s.data ?? [] };
+      return {
+        customers: c.data ?? [],
+        gases: g.data ?? [],
+        sizes: s.data ?? [],
+        partSizes: (ps.data ?? []).map((r: any) => String(r.label)),
+      };
     },
   });
+  const partSizes = lookups?.partSizes?.length ? lookups.partSizes : PART_SIZES;
 
   useEffect(() => {
     if (!isEdit && lines.length === 0 && lookups?.gases?.length && lookups?.sizes?.length) {
@@ -479,7 +486,7 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
                 <div className="grid grid-cols-[1fr_1fr_90px_auto] gap-1.5 items-center">
                   <Select
                     value={EXTRA_PRESETS.includes(e.name) ? e.name : "Other"}
-                    onValueChange={(v) => updExtra(i, { name: v === "Other" ? "" : v, size: v === "Valve" || v === "Spindle" ? (e.size ?? PART_SIZES[0]) : undefined })}
+                    onValueChange={(v) => updExtra(i, { name: v === "Other" ? "" : v, size: v === "Valve" || v === "Spindle" ? (e.size ?? partSizes[0]) : undefined })}
                   >
                     <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Item" /></SelectTrigger>
                     <SelectContent>
@@ -507,10 +514,10 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
                 {sized && (
                   <div className="grid grid-cols-[80px_1fr] gap-1.5 items-center">
                     <Label className="text-[11px] text-muted-foreground">Size</Label>
-                    <Select value={e.size ?? PART_SIZES[0]} onValueChange={(v) => updExtra(i, { size: v })}>
+                    <Select value={e.size ?? partSizes[0]} onValueChange={(v) => updExtra(i, { size: v })}>
                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Size" /></SelectTrigger>
                       <SelectContent>
-                        {PART_SIZES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        {partSizes.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
