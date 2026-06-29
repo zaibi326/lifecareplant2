@@ -58,14 +58,26 @@ function Dashboard() {
   const todayPayments = sum(pays.filter((p: any) => p.date === today), "amount");
 
   // Plant stock = plant opening + all-time received - all-time delivered
+  // With customers = all-time delivered - all-time received (cylinders abhi parties ke pass)
   const all = data?.allMoves ?? [];
   const allReceived = sum(all.filter((m: any) => m.type === "receive"), "quantity");
   const allDelivered = sum(all.filter((m: any) => m.type === "deliver"), "quantity");
 
-  const customerOpening = sum(data?.customers ?? [], "opening_cylinders");
   const plantOpening = Number(data?.plantOpening ?? 0);
-  const withCustomers = Math.max(0, customerOpening + allDelivered - allReceived);
+  const withCustomers = Math.max(0, allDelivered - allReceived);
   const plantStock = Math.max(0, plantOpening + allReceived - allDelivered);
+
+  // Per-party outstanding cylinders (delivered − received per customer)
+  const partyMap = new Map<string, { name: string; out: number }>();
+  for (const m of all) {
+    if (!m.customer_id) continue;
+    const e = partyMap.get(m.customer_id) ?? { name: m.customers?.name ?? "Customer", out: 0 };
+    const qty = Number(m.quantity ?? 0);
+    if (m.type === "deliver") e.out += qty;
+    else if (m.type === "receive") e.out -= qty;
+    partyMap.set(m.customer_id, e);
+  }
+  const partyBalances = Array.from(partyMap.values()).filter((p) => p.out > 0).sort((a, b) => b.out - a.out);
 
   const openingDue = sum(data?.customers ?? [], "opening_due");
   const billed = sum(all.filter((m: any) => m.type === "deliver"), "total_amount");
