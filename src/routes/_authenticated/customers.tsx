@@ -303,16 +303,32 @@ function CustomersPage() {
       </div>
 
       <Dialog open={breakdownOpen} onOpenChange={setBreakdownOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Cylinders by Size</DialogTitle></DialogHeader>
           <div className="space-y-2 mt-2">
             {(data?.sizeBreakdown ?? []).length === 0 && (
               <p className="text-sm text-muted-foreground">Koi size configured nahi.</p>
             )}
             {(data?.sizeBreakdown ?? []).map((s: any) => (
-              <div key={s.name} className="flex items-center justify-between rounded-lg border p-3">
-                <span className="text-sm font-semibold">{s.name}</span>
-                <span className="font-display font-bold text-lg">{Number(s.qty).toLocaleString()}</span>
+              <div key={s.name} className="rounded-lg border p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold">{s.name}</span>
+                  <span className="font-display font-bold text-lg">{Number(s.qty).toLocaleString()}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-[11px]">
+                  <div className="rounded bg-muted/60 p-1.5 text-center">
+                    <div className="text-muted-foreground uppercase tracking-wider">Opening</div>
+                    <div className="font-bold text-sm">{Number(s.opening).toLocaleString()}</div>
+                  </div>
+                  <div className="rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 p-1.5 text-center">
+                    <div className="uppercase tracking-wider">+ Received</div>
+                    <div className="font-bold text-sm">{Number(s.received).toLocaleString()}</div>
+                  </div>
+                  <div className="rounded bg-destructive/10 text-destructive p-1.5 text-center">
+                    <div className="uppercase tracking-wider">− Delivered</div>
+                    <div className="font-bold text-sm">{Number(s.delivered).toLocaleString()}</div>
+                  </div>
+                </div>
               </div>
             ))}
             <div className="flex items-center justify-between rounded-lg bg-muted p-3 mt-3">
@@ -322,6 +338,7 @@ function CustomersPage() {
           </div>
         </DialogContent>
       </Dialog>
+
 
       <div className="relative">
         <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
