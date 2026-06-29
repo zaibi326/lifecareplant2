@@ -440,11 +440,75 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
         ))}
         {type === "deliver" && lines.length > 0 && (
           <div className="flex items-center justify-between border-t pt-2 mt-2">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">Grand Total</span>
-            <span className="font-display font-bold text-lg">{formatCurrency(grandTotal)}</span>
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">Cylinders Total</span>
+            <span className="font-semibold">{formatCurrency(linesTotal)}</span>
           </div>
         )}
       </div>
+
+      {type === "deliver" && (
+        <div className="rounded-lg border p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-semibold">Extras / Parts <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Button type="button" size="sm" variant="outline" onClick={addExtra} className="h-8 gap-1">
+              <Plus className="size-3.5" /> Add
+            </Button>
+          </div>
+          {extras.length === 0 && (
+            <p className="text-xs text-muted-foreground">Valve, spindle, repair valve waghaira add karein.</p>
+          )}
+          {extras.map((e, i) => (
+            <div key={i} className="grid grid-cols-[1fr_1fr_90px_auto] gap-1.5 items-center rounded-md bg-muted/30 p-2">
+              <Select value={EXTRA_PRESETS.includes(e.name) ? e.name : "Other"} onValueChange={(v) => updExtra(i, { name: v === "Other" ? "" : v })}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Item" /></SelectTrigger>
+                <SelectContent>
+                  {EXTRA_PRESETS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Input
+                value={EXTRA_PRESETS.includes(e.name) && e.name !== "Other" ? e.name : e.name}
+                onChange={(ev) => updExtra(i, { name: ev.target.value })}
+                placeholder="Name / details"
+                className="h-9 text-xs"
+              />
+              <Input
+                type="number"
+                min={0}
+                value={e.price === "" ? "" : e.price}
+                onChange={(ev) => updExtra(i, { price: ev.target.value === "" ? "" : Number(ev.target.value) })}
+                placeholder="Price"
+                className="h-9 text-xs"
+              />
+              <Button type="button" size="icon" variant="ghost" onClick={() => delExtra(i)} className="size-9">
+                <Trash2 className="size-4 text-destructive" />
+              </Button>
+            </div>
+          ))}
+          {extras.length > 0 && (
+            <div className="flex items-center justify-between border-t pt-2 mt-2">
+              <span className="text-xs uppercase tracking-wider text-muted-foreground">Extras Total</span>
+              <span className="font-semibold">{formatCurrency(extrasTotal)}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between border-t pt-2 mt-2">
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">Grand Total</span>
+            <span className="font-display font-bold text-lg">{formatCurrency(grandTotal)}</span>
+          </div>
+        </div>
+      )}
+
+      {type === "deliver" && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs">Bill #</Label>
+            <Input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} placeholder="Optional" className="mt-1.5 h-11" />
+          </div>
+          <div>
+            <Label className="text-xs">ECR #</Label>
+            <Input value={ecrNumber} onChange={(e) => setEcrNumber(e.target.value)} placeholder="Optional" className="mt-1.5 h-11" />
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div>
