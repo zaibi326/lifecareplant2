@@ -40,7 +40,7 @@ function MovementsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string[] | null>(null);
   const [q, setQ] = useState("");
 
   const { data, isLoading } = useQuery({
