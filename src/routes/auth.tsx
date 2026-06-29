@@ -71,6 +71,9 @@ function AuthPage() {
             Public sign-ups are disabled. Contact your plant admin for an account.
           </p>
         </div>
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground text-center mt-6">
+          Powered by Braintech Automation
+        </p>
       </div>
     </div>
   );
