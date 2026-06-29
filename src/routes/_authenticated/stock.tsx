@@ -24,15 +24,15 @@ function StockPage() {
     queryKey: ["stock"],
     queryFn: async () => {
       const today = todayISO();
-      const [gases, sizes, movements, openings, production, parts, partSizes, settings] = await Promise.all([
+      const [gases, sizes, movements, openings, production, parts, partSizes, customers] = await Promise.all([
         supabase.from("gas_types").select("id,name,color").eq("active", true).order("name"),
         supabase.from("cylinder_sizes").select("id,name").eq("active", true).order("name"),
-        supabase.from("cylinder_movements").select("type,quantity,gas_type_id,cylinder_size_id,date,extras"),
+        supabase.from("cylinder_movements").select("type,quantity,gas_type_id,cylinder_size_id,date,extras,customer_id"),
         supabase.from("customer_opening_balances").select("quantity,gas_type_id,cylinder_size_id,condition"),
         supabase.from("production").select("quantity,date").eq("date", today),
         supabase.from("parts_stock").select("*").order("kind").order("size"),
         supabase.from("part_sizes").select("label").eq("active", true).order("sort_order").order("label"),
-        supabase.from("settings").select("plant_opening_stock").eq("id", 1).maybeSingle(),
+        supabase.from("customers").select("id,opening_cylinders"),
       ]);
       return {
         gases: gases.data ?? [],
@@ -42,7 +42,7 @@ function StockPage() {
         production: production.data ?? [],
         parts: parts.data ?? [],
         partSizes: (partSizes.data ?? []).map((r: any) => String(r.label)),
-        plantOpening: Number(settings.data?.plant_opening_stock ?? 0),
+        customers: customers.data ?? [],
       };
     },
   });
@@ -54,9 +54,22 @@ function StockPage() {
 
   const totalReceived = sumBy((m) => m.type === "receive");
   const totalDelivered = sumBy((m) => m.type === "deliver");
-  const plantOpening = Number(data?.plantOpening ?? 0);
-  const plantStock = Math.max(0, plantOpening + totalReceived - totalDelivered);
-  const withCustomers = Math.max(0, totalDelivered - totalReceived);
+  // Plant stock = received - delivered (opening cylinders are with parties, not in plant)
+  const plantStock = Math.max(0, totalReceived - totalDelivered);
+  // With customers = per-party max(0, opening + delivered − received) summed
+  const perCust = new Map<string, { op: number; d: number; r: number }>();
+  for (const c of (data?.customers ?? [])) {
+    perCust.set(c.id, { op: Number(c.opening_cylinders ?? 0), d: 0, r: 0 });
+  }
+  for (const m of ms) {
+    if (!m.customer_id) continue;
+    const e = perCust.get(m.customer_id) ?? { op: 0, d: 0, r: 0 };
+    if (m.type === "deliver") e.d += Number(m.quantity ?? 0);
+    else if (m.type === "receive") e.r += Number(m.quantity ?? 0);
+    perCust.set(m.customer_id, e);
+  }
+  let withCustomers = 0;
+  for (const v of perCust.values()) withCustomers += Math.max(0, v.op + v.d - v.r);
   const todayProduction = (data?.production ?? []).reduce((a, p: any) => a + Number(p.quantity ?? 0), 0);
 
   // Parts used count: each extras row with kind+size = qty pieces delivered
