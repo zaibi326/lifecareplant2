@@ -30,7 +30,7 @@ function Dashboard() {
         supabase.from("production").select("quantity,date").eq("date", today),
         supabase.from("customers").select("id,opening_cylinders,opening_due"),
         supabase.from("gas_types").select("id,name,color").eq("active", true),
-        supabase.from("cylinder_movements").select("type,quantity,total_amount"),
+        supabase.from("cylinder_movements").select("type,quantity,total_amount,customer_id,customers(name)"),
         supabase.from("payments").select("amount"),
         supabase.from("settings").select("plant_opening_stock").eq("id", 1).maybeSingle(),
       ]);
