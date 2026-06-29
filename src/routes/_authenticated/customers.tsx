@@ -21,7 +21,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/customers")({
-  head: () => ({ meta: [{ title: "Customers — GasFlow Pro" }] }),
+  head: () => ({ meta: [{ title: "Customers — Life Care Plant" }] }),
   component: CustomersPage,
 });
 

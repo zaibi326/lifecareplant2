@@ -52,8 +52,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Flame className="size-5" />
           </div>
           <div>
-            <div className="font-display font-bold tracking-tight">GasFlow Pro</div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Plant management</div>
+            <div className="font-display font-bold tracking-tight">Life Care Plant</div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Powered by Braintech Automation</div>
           </div>
         </div>
         <nav className="flex-1 p-3 space-y-1">
@@ -95,7 +95,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="size-8 rounded-lg bg-brand text-brand-foreground grid place-items-center">
             <Flame className="size-4" />
           </div>
-          <span className="font-display font-bold text-base tracking-tight">GasFlow Pro</span>
+          <span className="font-display font-bold text-base tracking-tight">Life Care Plant</span>
         </Link>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

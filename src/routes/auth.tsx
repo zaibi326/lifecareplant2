@@ -9,7 +9,7 @@ import { Loader2, Flame } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Sign in — GasFlow Pro" }] }),
+  head: () => ({ meta: [{ title: "Sign in — Life Care Plant" }] }),
   component: AuthPage,
 });
 
@@ -47,7 +47,7 @@ function AuthPage() {
           <div className="size-14 rounded-2xl bg-brand text-brand-foreground flex items-center justify-center mx-auto mb-4 shadow-lg shadow-brand/20">
             <Flame className="size-7" />
           </div>
-          <h1 className="font-display text-3xl font-bold tracking-tight">GasFlow Pro</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight">Life Care Plant</h1>
           <p className="text-sm text-muted-foreground mt-1">Gas Cylinder Plant Management</p>
         </div>
         <div className="bg-card rounded-3xl border p-6 shadow-sm">
@@ -71,6 +71,9 @@ function AuthPage() {
             Public sign-ups are disabled. Contact your plant admin for an account.
           </p>
         </div>
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground text-center mt-6">
+          Powered by Braintech Automation
+        </p>
       </div>
     </div>
   );

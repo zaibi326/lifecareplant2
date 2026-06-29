@@ -10,7 +10,7 @@ import { ArrowLeft, ArrowDownToLine, ArrowUpFromLine, Wallet, Printer, Phone, Ma
 import { printHTML } from "@/lib/print";
 
 export const Route = createFileRoute("/_authenticated/customers/$customerId")({
-  head: () => ({ meta: [{ title: "Customer — GasFlow Pro" }] }),
+  head: () => ({ meta: [{ title: "Customer — Life Care Plant" }] }),
   component: CustomerProfilePage,
 });
 
@@ -91,7 +91,7 @@ function CustomerProfilePage() {
     const rows = timeline.map((t) => `<tr><td>${formatDate(t.date)}</td><td>${t.title}</td><td>${t.sub}${t.invoice ? ` <span class="muted">(${t.invoice})</span>` : ""}${t.ref ? ` <span class="muted">Ref ${t.ref}</span>` : ""}</td><td class="right">${t.amount != null ? formatCurrency(t.kind === "payment" ? -t.amount : t.amount) : "—"}</td></tr>`).join("");
     printHTML(`Statement — ${data.customer.name}`, `
       <div class="head">
-        <div><h1>${data.settings?.company_name ?? "GasFlow Pro"}</h1><div class="muted">${data.settings?.company_address ?? ""}</div><div class="muted">${data.settings?.company_phone ?? ""}</div></div>
+        <div><h1>${data.settings?.company_name ?? "Life Care Plant"}</h1><div class="muted">${data.settings?.company_address ?? ""}</div><div class="muted">${data.settings?.company_phone ?? ""}</div></div>
         <div style="text-align:right"><span class="badge">STATEMENT</span><div style="margin-top:8px;font-weight:700">${data.customer.name}</div><div class="muted">${data.customer.phone ?? ""}</div><div class="muted">${data.customer.address ?? ""}</div></div>
       </div>
       <h2>Activity</h2>

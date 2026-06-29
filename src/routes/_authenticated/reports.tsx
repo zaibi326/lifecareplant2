@@ -11,7 +11,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { ArrowDownToLine, ArrowUpFromLine, Wallet, Factory, Download } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/reports")({
-  head: () => ({ meta: [{ title: "Reports — GasFlow Pro" }] }),
+  head: () => ({ meta: [{ title: "Reports — Life Care Plant" }] }),
   component: ReportsPage,
 });
 

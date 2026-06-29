@@ -15,7 +15,7 @@ import { Plus, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/payments")({
-  head: () => ({ meta: [{ title: "Payments — GasFlow Pro" }] }),
+  head: () => ({ meta: [{ title: "Payments — Life Care Plant" }] }),
   component: PaymentsPage,
 });
 

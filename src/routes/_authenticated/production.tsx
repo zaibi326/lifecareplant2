@@ -14,7 +14,7 @@ import { Plus, Factory } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/production")({
-  head: () => ({ meta: [{ title: "Production — GasFlow Pro" }] }),
+  head: () => ({ meta: [{ title: "Production — Life Care Plant" }] }),
   component: ProductionPage,
 });
 
