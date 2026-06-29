@@ -72,9 +72,13 @@ function CustomersPage() {
       (ms ?? []).forEach((m: any) => {
         const e = map.get(m.customer_id);
         if (!e) return;
-        // Opening + delivered + received all add up to total cylinders associated with the customer
-        e.out += Number(m.quantity ?? 0);
-        if (m.type === "deliver") { e.due += Number(m.total_amount ?? 0); }
+        const qty = Number(m.quantity ?? 0);
+        if (m.type === "deliver") {
+          e.out -= qty;
+          e.due += Number(m.total_amount ?? 0);
+        } else {
+          e.out += qty;
+        }
       });
       (ps ?? []).forEach((p: any) => {
         const e = map.get(p.customer_id);
@@ -82,7 +86,7 @@ function CustomersPage() {
         e.due -= Number(p.amount ?? 0);
       });
 
-      // Per-size breakdown across all customers (opening + delivered − received)
+      // Per-size breakdown across all customers (opening + received − delivered)
       const sizeMap = new Map<string, number>();
       (obs ?? []).forEach((o: any) => {
         if (!o.cylinder_size_id) return;
@@ -91,7 +95,8 @@ function CustomersPage() {
       (ms ?? []).forEach((m: any) => {
         if (!m.cylinder_size_id) return;
         const cur = sizeMap.get(m.cylinder_size_id) ?? 0;
-        sizeMap.set(m.cylinder_size_id, cur + Number(m.quantity ?? 0));
+        const qty = Number(m.quantity ?? 0);
+        sizeMap.set(m.cylinder_size_id, cur + (m.type === "deliver" ? -qty : qty));
       });
       const sizeBreakdown = (szs ?? []).map((s: any) => ({ name: s.name, qty: sizeMap.get(s.id) ?? 0 }));
 
