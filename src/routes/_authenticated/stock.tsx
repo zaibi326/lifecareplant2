@@ -208,9 +208,9 @@ function PartsStockSection({ parts, partSizes, usedMap, onChanged }: { parts: an
   );
 }
 
-function AddPartForm({ onSubmit, pending }: { onSubmit: (r: { kind: string; size: string; quantity: number }) => void; pending: boolean }) {
+function AddPartForm({ partSizes, onSubmit, pending }: { partSizes: string[]; onSubmit: (r: { kind: string; size: string; quantity: number }) => void; pending: boolean }) {
   const [kind, setKind] = useState<string>("valve");
-  const [size, setSize] = useState<string>(PART_SIZES[0]);
+  const [size, setSize] = useState<string>(partSizes[0] ?? DEFAULT_PART_SIZES[0]);
   const [qty, setQty] = useState<number>(0);
   return (
     <Card className="p-3 mb-2">
@@ -224,7 +224,7 @@ function AddPartForm({ onSubmit, pending }: { onSubmit: (r: { kind: string; size
         <div>
           <label className="text-[11px] text-muted-foreground">Size</label>
           <select value={size} onChange={(e) => setSize(e.target.value)} className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm">
-            {PART_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+            {partSizes.map((s: string) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>
