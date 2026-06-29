@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { todayISO } from "@/lib/format";
 
 const PART_KINDS = ["valve", "spindle"] as const;
-const PART_SIZES = ['1"', '1.15"', '1.30"', '1.45"', '2"'];
+const DEFAULT_PART_SIZES = ['1"', '1.15"', '1.30"', '1.45"', '2"'];
 
 export const Route = createFileRoute("/_authenticated/stock")({
   head: () => ({ meta: [{ title: "Stock — GasFlow Pro" }] }),
