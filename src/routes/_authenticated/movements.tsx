@@ -265,9 +265,13 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
     setLines((r) => r.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
   const delLine = (i: number) => setLines((r) => r.filter((_, idx) => idx !== i));
 
-  const grandTotal = type === "deliver"
+  const extrasTotal = type === "deliver"
+    ? extras.reduce((a, e) => a + (Number(e.price) || 0), 0)
+    : 0;
+  const linesTotal = type === "deliver"
     ? lines.reduce((a, l) => a + Number(l.quantity || 0) * Number(l.rate || 0), 0)
     : 0;
+  const grandTotal = linesTotal + extrasTotal;
 
   const save = useMutation({
     mutationFn: async (f: FormData) => {
