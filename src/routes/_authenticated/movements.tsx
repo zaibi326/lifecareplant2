@@ -209,28 +209,47 @@ function MovementsPage() {
   );
 }
 
-async function printInvoice(m: any) {
+async function printInvoice(input: any | any[]) {
+  const rows: any[] = Array.isArray(input) ? input : [input];
+  const first = rows[0];
   const { data: s } = await supabase.from("settings").select("*").eq("id", 1).maybeSingle();
   const tax = Number(s?.tax_percent ?? 0);
-  const sub = Number(m.total_amount ?? 0);
+
+  const cylRows = rows.map((r) => {
+    const amt = Number(r.quantity || 0) * Number(r.rate || 0);
+    return `<tr><td>${r.gas_types?.name ?? ""} — ${r.cylinder_sizes?.name ?? ""}</td><td class="right">${r.quantity}</td><td class="right">${formatCurrency(Number(r.rate ?? 0))}</td><td class="right">${formatCurrency(amt)}</td></tr>`;
+  }).join("");
+
+  const extras = rows.flatMap((r) => Array.isArray(r.extras) ? r.extras : []);
+  const extraRows = extras.map((e: any) => {
+    const qty = Math.max(1, Number(e.qty) || 1);
+    const price = Number(e.price) || 0;
+    const label = `${e.name ?? ""}${e.size ? ` (${e.size})` : ""}`;
+    return `<tr><td>${label}</td><td class="right">${qty}</td><td class="right">${formatCurrency(price)}</td><td class="right">${formatCurrency(price * qty)}</td></tr>`;
+  }).join("");
+
+  const cylSub = rows.reduce((a, r) => a + Number(r.quantity || 0) * Number(r.rate || 0), 0);
+  const extrasSub = extras.reduce((a: number, e: any) => a + (Number(e.price) || 0) * Math.max(1, Number(e.qty) || 1), 0);
+  const sub = cylSub + extrasSub;
   const taxAmt = sub * tax / 100;
   const grand = sub + taxAmt;
-  printHTML(`Invoice ${m.invoice_number ?? ""}`, `
+
+  printHTML(`Invoice ${first.invoice_number ?? ""}`, `
     <div class="head">
       <div><h1>${s?.company_name ?? "Life Care Plant"}</h1><div class="muted">${s?.company_address ?? ""}</div><div class="muted">${s?.company_phone ?? ""}</div></div>
-      <div style="text-align:right"><span class="badge">INVOICE</span><div style="margin-top:8px;font-weight:700">${m.invoice_number ?? ""}</div><div class="muted">${formatDate(m.date)}</div></div>
+      <div style="text-align:right"><span class="badge">INVOICE</span><div style="margin-top:8px;font-weight:700">${first.invoice_number ?? ""}</div><div class="muted">${formatDate(first.date)}</div></div>
     </div>
     <h2>Bill To</h2>
-    <div style="font-weight:600">${m.customers?.name ?? ""}</div>
+    <div style="font-weight:600">${first.customers?.name ?? ""}</div>
     <h2>Items</h2>
     <table><thead><tr><th>Description</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Amount</th></tr></thead>
-    <tbody><tr><td>${m.gas_types?.name ?? ""} — ${m.cylinder_sizes?.name ?? ""}</td><td class="right">${m.quantity}</td><td class="right">${formatCurrency(Number(m.rate ?? 0))}</td><td class="right">${formatCurrency(sub)}</td></tr></tbody></table>
+    <tbody>${cylRows}${extraRows}</tbody></table>
     <div class="totals">
       <div><div class="label">Subtotal</div><div class="val">${formatCurrency(sub)}</div></div>
       ${tax ? `<div><div class="label">Tax (${tax}%)</div><div class="val">${formatCurrency(taxAmt)}</div></div>` : ""}
       <div><div class="label">Total</div><div class="val" style="font-size:18px">${formatCurrency(grand)}</div></div>
     </div>
-    ${m.vehicle_number ? `<div class="muted" style="margin-top:16px">Vehicle: ${m.vehicle_number}${m.driver_name ? ` • Driver: ${m.driver_name}` : ""}</div>` : ""}
+    ${first.vehicle_number ? `<div class="muted" style="margin-top:16px">Vehicle: ${first.vehicle_number}${first.driver_name ? ` • Driver: ${first.driver_name}` : ""}</div>` : ""}
     ${s?.invoice_footer ? `<div class="muted" style="margin-top:24px;border-top:1px solid #e2e8f0;padding-top:12px">${s.invoice_footer}</div>` : ""}
   `);
 }
