@@ -169,9 +169,14 @@ function MovementsPage() {
                 <div className="font-display font-bold">{totalQty}</div>
                 {type === "deliver" && <Badge variant="secondary" className="text-[10px]">{formatCurrency(totalAmt)}</Badge>}
                 {type === "deliver" && (
-                  <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs" onClick={() => printInvoice(rows)}>
-                    <Printer className="size-3" /> Invoice
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs" onClick={() => printInvoice(rows, "print")}>
+                      <Printer className="size-3" /> Invoice
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs" onClick={() => printInvoice(rows, "jpg")}>
+                      <Download className="size-3" /> JPG
+                    </Button>
+                  </div>
                 )}
               </div>
               <DropdownMenu>
