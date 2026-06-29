@@ -284,6 +284,13 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
       const remarks = String(f.get("remarks") ?? "").trim() || null;
       const condition = cond || (type === "receive" ? "empty" : "filled");
       const offline = typeof navigator !== "undefined" && !navigator.onLine;
+      const bill_number = type === "deliver" ? (billNumber.trim() || null) : null;
+      const ecr_number = type === "deliver" ? (ecrNumber.trim() || null) : null;
+      const extrasClean = type === "deliver"
+        ? extras
+            .map((e) => ({ name: String(e.name || "").trim(), price: e.price === "" ? null : Number(e.price) || 0 }))
+            .filter((e) => e.name.length > 0)
+        : [];
 
       const photo_urls: string[] = [];
       if (!offline && photos.length > 0) {
@@ -298,39 +305,51 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
 
       if (isEdit) {
         const l = valid[0];
+        const lineAmt = type === "deliver" ? Number(l.quantity) * Number(l.rate || 0) : null;
+        const extrasSum = extrasClean.reduce((a, e) => a + (Number(e.price) || 0), 0);
         const { error } = await supabase.from("cylinder_movements").update({
           customer_id: customer,
           gas_type_id: l.gas_type_id,
           cylinder_size_id: l.cylinder_size_id,
           quantity: Number(l.quantity),
           rate: type === "deliver" ? Number(l.rate || 0) : null,
-          total_amount: type === "deliver" ? Number(l.quantity) * Number(l.rate || 0) : null,
+          total_amount: type === "deliver" ? (lineAmt ?? 0) + extrasSum : null,
           date,
           vehicle_number,
           driver_name,
           condition,
           remarks,
+          bill_number,
+          ecr_number,
+          extras: extrasClean,
           ...(photo_urls.length ? { photo_urls } : {}),
         }).eq("id", editing.id);
         if (error) throw error;
         return { queued: false };
       }
 
-      const payloads = valid.map((l) => ({
-        type,
-        customer_id: customer,
-        gas_type_id: l.gas_type_id,
-        cylinder_size_id: l.cylinder_size_id,
-        quantity: Number(l.quantity),
-        rate: type === "deliver" ? Number(l.rate || 0) : null,
-        total_amount: type === "deliver" ? Number(l.quantity) * Number(l.rate || 0) : null,
-        date,
-        vehicle_number,
-        driver_name,
-        condition,
-        remarks,
-        photo_urls: photo_urls.length ? photo_urls : null,
-      }));
+      const payloads = valid.map((l, idx) => {
+        const lineAmt = type === "deliver" ? Number(l.quantity) * Number(l.rate || 0) : null;
+        const extrasSum = idx === 0 ? extrasClean.reduce((a, e) => a + (Number(e.price) || 0), 0) : 0;
+        return {
+          type,
+          customer_id: customer,
+          gas_type_id: l.gas_type_id,
+          cylinder_size_id: l.cylinder_size_id,
+          quantity: Number(l.quantity),
+          rate: type === "deliver" ? Number(l.rate || 0) : null,
+          total_amount: type === "deliver" ? (lineAmt ?? 0) + extrasSum : null,
+          date,
+          vehicle_number,
+          driver_name,
+          condition,
+          remarks,
+          bill_number,
+          ecr_number,
+          extras: idx === 0 ? extrasClean : [],
+          photo_urls: photo_urls.length ? photo_urls : null,
+        };
+      });
 
       if (offline) {
         for (const p of payloads) {
