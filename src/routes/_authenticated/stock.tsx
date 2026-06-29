@@ -56,8 +56,7 @@ function StockPage() {
   const totalDelivered = sumBy((m) => m.type === "deliver");
   const plantOpening = Number(data?.plantOpening ?? 0);
   const plantStock = Math.max(0, plantOpening + totalReceived - totalDelivered);
-  const customerOpening = sumOpen(() => true);
-  const withCustomers = Math.max(0, customerOpening + totalDelivered - totalReceived);
+  const withCustomers = Math.max(0, totalDelivered - totalReceived);
   const todayProduction = (data?.production ?? []).reduce((a, p: any) => a + Number(p.quantity ?? 0), 0);
 
   // Parts used count: each extras row with kind+size = qty pieces delivered
