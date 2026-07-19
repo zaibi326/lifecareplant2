@@ -86,11 +86,26 @@ function StockPage() {
     }
   }
 
+  // Gas × Size matrix
+  const gasSizeRows = (data?.gases ?? []).map((g: any) => {
+    const sizes = (data?.sizes ?? []).map((s: any) => {
+      const r = sumBy((m) => m.type === "receive" && m.gas_type_id === g.id && m.cylinder_size_id === s.id);
+      const d = sumBy((m) => m.type === "deliver" && m.gas_type_id === g.id && m.cylinder_size_id === s.id);
+      const op = sumOpen((o) => o.gas_type_id === g.id && o.cylinder_size_id === s.id);
+      const plant = Math.max(0, r - d);
+      const customers = Math.max(0, op + d - r);
+      const total = plant + customers;
+      return { size: s.name, plant, customers, total, active: plant > 0 || customers > 0 || op > 0 };
+    });
+    const totals = sizes.reduce((a: any, x: any) => ({ plant: a.plant + x.plant, customers: a.customers + x.customers, total: a.total + x.total }), { plant: 0, customers: 0, total: 0 });
+    return { gas: g, sizes: sizes.filter((s: any) => s.active), totals };
+  });
+
   return (
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">Stock Position</h1>
-        <p className="text-sm text-muted-foreground mt-1">Plant stock, with customers, gas-wise aur parts breakdown.</p>
+        <p className="text-sm text-muted-foreground mt-1">Gas × size wise plant, customers aur total breakdown.</p>
       </header>
 
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -101,59 +116,51 @@ function StockPage() {
       </section>
 
       <section>
-        <h2 className="font-display font-bold text-lg mb-3">Gas-wise Plant Stock</h2>
+        <h2 className="font-display font-bold text-lg mb-3">Gas-wise Breakdown</h2>
         {isLoading && <Card className="p-6 text-sm text-muted-foreground">Loading…</Card>}
-        {!isLoading && (data?.gases ?? []).length === 0 && (
+        {!isLoading && gasSizeRows.length === 0 && (
           <Card className="p-6 text-sm text-muted-foreground">No gas types configured. Add gas types in Settings.</Card>
         )}
-        <div className="grid gap-2">
-          {(data?.gases ?? []).map((g: any) => {
-            const r = sumBy((m) => m.type === "receive" && m.gas_type_id === g.id);
-            const d = sumBy((m) => m.type === "deliver" && m.gas_type_id === g.id);
-            const op = sumOpen((o) => o.gas_type_id === g.id);
-            const stock = Math.max(0, r - d);
-            const out = Math.max(0, d - r);
-
-            return (
-              <Card key={g.id} className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="size-9 rounded-lg grid place-items-center text-white font-bold text-sm" style={{ background: g.color || "var(--brand)" }}>
-                      {g.name.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="font-semibold">{g.name}</div>
-                      <div className="text-xs text-muted-foreground">Received {r} • Delivered {d}</div>
-                    </div>
+        <div className="grid gap-3">
+          {gasSizeRows.map(({ gas, sizes, totals }: any) => (
+            <Card key={gas.id} className="p-4">
+              <div className="flex items-center justify-between mb-3 gap-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="size-10 rounded-xl grid place-items-center text-white font-bold text-sm shrink-0" style={{ background: gas.color || "var(--brand)" }}>
+                    {gas.name.slice(0, 2).toUpperCase()}
                   </div>
-                  <div className="text-right">
-                    <div className="font-display font-bold text-2xl">{stock}</div>
-                    <Badge variant="secondary" className="text-[10px] mt-0.5">{out} with customers</Badge>
+                  <div className="min-w-0">
+                    <div className="font-display font-bold truncate">{gas.name}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Total {totals.total} cyl</div>
                   </div>
                 </div>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="font-display font-bold text-lg mb-3">By Cylinder Size</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {(data?.sizes ?? []).map((s: any) => {
-            const r = sumBy((m) => m.type === "receive" && m.cylinder_size_id === s.id);
-            const d = sumBy((m) => m.type === "deliver" && m.cylinder_size_id === s.id);
-            return (
-              <Card key={s.id} className="p-3">
-                <div className="text-xs text-muted-foreground">{s.name}</div>
-                <div className="font-display font-bold text-xl mt-1">{Math.max(0, r - d)}</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">in plant</div>
-              </Card>
-            );
-          })}
-          {(data?.sizes ?? []).length === 0 && (
-            <Card className="p-6 col-span-full text-sm text-muted-foreground">No cylinder sizes configured.</Card>
-          )}
+                <div className="text-right shrink-0">
+                  <div className="text-[10px] text-muted-foreground">Plant / Cust</div>
+                  <div className="font-display font-bold text-sm"><span className="text-brand">{totals.plant}</span> / <span className="text-warning">{totals.customers}</span></div>
+                </div>
+              </div>
+              {sizes.length === 0 ? (
+                <div className="text-xs text-muted-foreground py-2">Is gas ka koi stock ya movement nahi.</div>
+              ) : (
+                <div className="rounded-lg border overflow-hidden">
+                  <div className="grid grid-cols-4 bg-muted/50 text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-3 py-2">
+                    <span>Size</span>
+                    <span className="text-right">Plant</span>
+                    <span className="text-right">Customers</span>
+                    <span className="text-right">Total</span>
+                  </div>
+                  {sizes.map((row: any, i: number) => (
+                    <div key={i} className="grid grid-cols-4 items-center px-3 py-2.5 text-sm border-t">
+                      <span className="font-medium truncate">{row.size}</span>
+                      <span className="text-right font-display font-bold text-brand">{row.plant}</span>
+                      <span className="text-right font-display font-bold text-warning">{row.customers}</span>
+                      <span className="text-right font-display font-bold">{row.total}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          ))}
         </div>
       </section>
 
