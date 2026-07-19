@@ -45,28 +45,58 @@ function CustomerProfilePage() {
     return { withCust, due, last };
   }, [data]);
 
-  // breakdown: gas + size + condition
-  const breakdown = useMemo(() => {
-    const map = new Map<string, { gas: string; size: string; color?: string; filled: number; empty: number }>();
-    const key = (g: string, s: string) => `${g}||${s}`;
-    const ensure = (g: string, s: string, color?: string) => {
-      const k = key(g, s);
-      if (!map.has(k)) map.set(k, { gas: g, size: s, color, filled: 0, empty: 0 });
-      return map.get(k)!;
+  // Matrix: rows = gas, cols = size; cells = { filled, empty }
+  const matrix = useMemo(() => {
+    const gases = new Map<string, { name: string; color?: string }>();
+    const sizes = new Map<string, { name: string }>();
+    const cells = new Map<string, { filled: number; empty: number }>();
+    const k = (g: string, s: string) => `${g}||${s}`;
+    const bump = (g: string, s: string, color: string | undefined, cond: "filled" | "empty", q: number) => {
+      if (!gases.has(g)) gases.set(g, { name: g, color });
+      if (!sizes.has(s)) sizes.set(s, { name: s });
+      const key = k(g, s);
+      if (!cells.has(key)) cells.set(key, { filled: 0, empty: 0 });
+      cells.get(key)![cond] += q;
     };
     (data?.opening ?? []).forEach((o: any) => {
-      const row = ensure(o.gas_types?.name ?? "—", o.cylinder_sizes?.name ?? "—", o.gas_types?.color);
-      if (o.condition === "empty") row.empty += Number(o.quantity ?? 0);
-      else row.filled += Number(o.quantity ?? 0);
+      bump(o.gas_types?.name ?? "—", o.cylinder_sizes?.name ?? "—", o.gas_types?.color, o.condition === "empty" ? "empty" : "filled", Number(o.quantity ?? 0));
     });
     (data?.movements ?? []).forEach((m: any) => {
-      const row = ensure(m.gas_types?.name ?? "—", m.cylinder_sizes?.name ?? "—", m.gas_types?.color);
       const cond = m.condition === "empty" ? "empty" : "filled";
-      const q = Number(m.quantity ?? 0);
-      if (m.type === "deliver") row[cond] += q;
-      else row[cond] -= q;
+      const q = Number(m.quantity ?? 0) * (m.type === "deliver" ? 1 : -1);
+      bump(m.gas_types?.name ?? "—", m.cylinder_sizes?.name ?? "—", m.gas_types?.color, cond, q);
     });
-    return Array.from(map.values()).filter((r) => r.filled !== 0 || r.empty !== 0);
+    const gasList = Array.from(gases.values()).sort((a, b) => a.name.localeCompare(b.name));
+    const sizeList = Array.from(sizes.values()).sort((a, b) => a.name.localeCompare(b.name));
+    const activeGases = gasList.filter((g) => sizeList.some((s) => {
+      const c = cells.get(k(g.name, s.name)); return c && (c.filled !== 0 || c.empty !== 0);
+    }));
+    const activeSizes = sizeList.filter((s) => activeGases.some((g) => {
+      const c = cells.get(k(g.name, s.name)); return c && (c.filled !== 0 || c.empty !== 0);
+    }));
+    let totalFilled = 0, totalEmpty = 0;
+    cells.forEach((v) => { totalFilled += v.filled; totalEmpty += v.empty; });
+    // per-size totals
+    const sizeTotals = new Map<string, { filled: number; empty: number }>();
+    activeSizes.forEach((s) => {
+      const t = { filled: 0, empty: 0 };
+      activeGases.forEach((g) => {
+        const c = cells.get(k(g.name, s.name));
+        if (c) { t.filled += c.filled; t.empty += c.empty; }
+      });
+      sizeTotals.set(s.name, t);
+    });
+    // per-gas totals
+    const gasTotals = new Map<string, { filled: number; empty: number }>();
+    activeGases.forEach((g) => {
+      const t = { filled: 0, empty: 0 };
+      activeSizes.forEach((s) => {
+        const c = cells.get(k(g.name, s.name));
+        if (c) { t.filled += c.filled; t.empty += c.empty; }
+      });
+      gasTotals.set(g.name, t);
+    });
+    return { gases: activeGases, sizes: activeSizes, cells, k, totalFilled, totalEmpty, sizeTotals, gasTotals };
   }, [data]);
 
 
