@@ -45,28 +45,58 @@ function CustomerProfilePage() {
     return { withCust, due, last };
   }, [data]);
 
-  // breakdown: gas + size + condition
-  const breakdown = useMemo(() => {
-    const map = new Map<string, { gas: string; size: string; color?: string; filled: number; empty: number }>();
-    const key = (g: string, s: string) => `${g}||${s}`;
-    const ensure = (g: string, s: string, color?: string) => {
-      const k = key(g, s);
-      if (!map.has(k)) map.set(k, { gas: g, size: s, color, filled: 0, empty: 0 });
-      return map.get(k)!;
+  // Matrix: rows = gas, cols = size; cells = { filled, empty }
+  const matrix = useMemo(() => {
+    const gases = new Map<string, { name: string; color?: string }>();
+    const sizes = new Map<string, { name: string }>();
+    const cells = new Map<string, { filled: number; empty: number }>();
+    const k = (g: string, s: string) => `${g}||${s}`;
+    const bump = (g: string, s: string, color: string | undefined, cond: "filled" | "empty", q: number) => {
+      if (!gases.has(g)) gases.set(g, { name: g, color });
+      if (!sizes.has(s)) sizes.set(s, { name: s });
+      const key = k(g, s);
+      if (!cells.has(key)) cells.set(key, { filled: 0, empty: 0 });
+      cells.get(key)![cond] += q;
     };
     (data?.opening ?? []).forEach((o: any) => {
-      const row = ensure(o.gas_types?.name ?? "—", o.cylinder_sizes?.name ?? "—", o.gas_types?.color);
-      if (o.condition === "empty") row.empty += Number(o.quantity ?? 0);
-      else row.filled += Number(o.quantity ?? 0);
+      bump(o.gas_types?.name ?? "—", o.cylinder_sizes?.name ?? "—", o.gas_types?.color, o.condition === "empty" ? "empty" : "filled", Number(o.quantity ?? 0));
     });
     (data?.movements ?? []).forEach((m: any) => {
-      const row = ensure(m.gas_types?.name ?? "—", m.cylinder_sizes?.name ?? "—", m.gas_types?.color);
       const cond = m.condition === "empty" ? "empty" : "filled";
-      const q = Number(m.quantity ?? 0);
-      if (m.type === "deliver") row[cond] += q;
-      else row[cond] -= q;
+      const q = Number(m.quantity ?? 0) * (m.type === "deliver" ? 1 : -1);
+      bump(m.gas_types?.name ?? "—", m.cylinder_sizes?.name ?? "—", m.gas_types?.color, cond, q);
     });
-    return Array.from(map.values()).filter((r) => r.filled !== 0 || r.empty !== 0);
+    const gasList = Array.from(gases.values()).sort((a, b) => a.name.localeCompare(b.name));
+    const sizeList = Array.from(sizes.values()).sort((a, b) => a.name.localeCompare(b.name));
+    const activeGases = gasList.filter((g) => sizeList.some((s) => {
+      const c = cells.get(k(g.name, s.name)); return c && (c.filled !== 0 || c.empty !== 0);
+    }));
+    const activeSizes = sizeList.filter((s) => activeGases.some((g) => {
+      const c = cells.get(k(g.name, s.name)); return c && (c.filled !== 0 || c.empty !== 0);
+    }));
+    let totalFilled = 0, totalEmpty = 0;
+    cells.forEach((v) => { totalFilled += v.filled; totalEmpty += v.empty; });
+    // per-size totals
+    const sizeTotals = new Map<string, { filled: number; empty: number }>();
+    activeSizes.forEach((s) => {
+      const t = { filled: 0, empty: 0 };
+      activeGases.forEach((g) => {
+        const c = cells.get(k(g.name, s.name));
+        if (c) { t.filled += c.filled; t.empty += c.empty; }
+      });
+      sizeTotals.set(s.name, t);
+    });
+    // per-gas totals
+    const gasTotals = new Map<string, { filled: number; empty: number }>();
+    activeGases.forEach((g) => {
+      const t = { filled: 0, empty: 0 };
+      activeSizes.forEach((s) => {
+        const c = cells.get(k(g.name, s.name));
+        if (c) { t.filled += c.filled; t.empty += c.empty; }
+      });
+      gasTotals.set(g.name, t);
+    });
+    return { gases: activeGases, sizes: activeSizes, cells, k, totalFilled, totalEmpty, sizeTotals, gasTotals };
   }, [data]);
 
 
@@ -131,38 +161,111 @@ function CustomerProfilePage() {
       </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Link to="/movements" search={{ type: "receive" }}><Button variant="outline" className="w-full h-12 gap-2"><ArrowDownToLine className="size-4" /> Receive</Button></Link>
-        <Link to="/movements" search={{ type: "deliver" }}><Button variant="outline" className="w-full h-12 gap-2"><ArrowUpFromLine className="size-4" /> Deliver</Button></Link>
-        <Link to="/payments"><Button variant="outline" className="w-full h-12 gap-2"><Wallet className="size-4" /> Payment</Button></Link>
-        <Button onClick={printStatement} className="h-12 gap-2"><Printer className="size-4" /> Print Statement</Button>
+        <Link to="/movements" search={{ type: "receive" }}>
+          <Button variant="outline" className="w-full h-14 flex-col gap-0.5 border-brand/30 hover:bg-brand/5 hover:border-brand/60">
+            <ArrowDownToLine className="size-4 text-brand" />
+            <span className="text-xs font-semibold">Receive</span>
+          </Button>
+        </Link>
+        <Link to="/movements" search={{ type: "deliver" }}>
+          <Button variant="outline" className="w-full h-14 flex-col gap-0.5 border-primary/30 hover:bg-primary/5 hover:border-primary/60">
+            <ArrowUpFromLine className="size-4 text-primary" />
+            <span className="text-xs font-semibold">Deliver</span>
+          </Button>
+        </Link>
+        <Link to="/payments">
+          <Button variant="outline" className="w-full h-14 flex-col gap-0.5 border-success/30 hover:bg-success/5 hover:border-success/60">
+            <Wallet className="size-4 text-success" />
+            <span className="text-xs font-semibold">Payment</span>
+          </Button>
+        </Link>
+        <Button onClick={printStatement} className="h-14 flex-col gap-0.5">
+          <Printer className="size-4" />
+          <span className="text-xs font-semibold">Statement</span>
+        </Button>
       </div>
 
-      <div>
-        <h2 className="font-display text-lg font-bold mb-3">Cylinders With Customer (by Gas & Size)</h2>
-        {breakdown.length === 0 ? (
-          <Card className="p-6 text-sm text-muted-foreground">Koi cylinder is customer ke pas track nahi.</Card>
+      <Card className="overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
+          <div>
+            <h2 className="font-display text-base font-bold">Stock Matrix</h2>
+            <p className="text-[11px] text-muted-foreground">Gas × Size — cylinders currently with this customer</p>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</div>
+            <div className="font-display font-bold text-sm"><span className="text-success">{matrix.totalFilled}F</span> · <span className="text-muted-foreground">{matrix.totalEmpty}E</span></div>
+          </div>
+        </div>
+        {matrix.gases.length === 0 ? (
+          <div className="p-6 text-sm text-muted-foreground text-center">Koi cylinder is customer ke pas track nahi.</div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {breakdown.map((b, i) => (
-              <Card key={i} className="p-3">
-                <div className="flex items-center gap-2">
-                  <div className="size-7 rounded-md grid place-items-center text-white text-[10px] font-bold" style={{ background: b.color || "var(--brand)" }}>
-                    {b.gas.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold truncate">{b.gas}</div>
-                    <div className="text-[10px] text-muted-foreground">{b.size}</div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between mt-2 text-xs">
-                  <span className="text-success font-semibold">Filled: {b.filled}</span>
-                  <span className="text-muted-foreground font-semibold">Empty: {b.empty}</span>
-                </div>
-              </Card>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b bg-muted/20">
+                  <th className="text-left font-semibold p-3 sticky left-0 bg-muted/20 z-10">Gas</th>
+                  {matrix.sizes.map((s) => (
+                    <th key={s.name} className="text-center font-semibold p-3 whitespace-nowrap">{s.name}</th>
+                  ))}
+                  <th className="text-center font-semibold p-3 bg-muted/40">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matrix.gases.map((g) => {
+                  const gt = matrix.gasTotals.get(g.name)!;
+                  return (
+                    <tr key={g.name} className="border-b last:border-0 hover:bg-muted/10">
+                      <td className="p-3 sticky left-0 bg-card">
+                        <div className="flex items-center gap-2">
+                          <div className="size-6 rounded-md grid place-items-center text-white text-[9px] font-bold" style={{ background: g.color || "var(--brand)" }}>
+                            {g.name.slice(0, 2).toUpperCase()}
+                          </div>
+                          <span className="font-semibold whitespace-nowrap">{g.name}</span>
+                        </div>
+                      </td>
+                      {matrix.sizes.map((s) => {
+                        const c = matrix.cells.get(matrix.k(g.name, s.name));
+                        const f = c?.filled ?? 0, e = c?.empty ?? 0;
+                        if (f === 0 && e === 0) return <td key={s.name} className="p-3 text-center text-muted-foreground/40">—</td>;
+                        return (
+                          <td key={s.name} className="p-3 text-center whitespace-nowrap">
+                            {f !== 0 && <span className="text-success font-semibold">{f}F</span>}
+                            {f !== 0 && e !== 0 && <span className="text-muted-foreground mx-1">·</span>}
+                            {e !== 0 && <span className="text-muted-foreground font-semibold">{e}E</span>}
+                          </td>
+                        );
+                      })}
+                      <td className="p-3 text-center bg-muted/20 font-display font-bold whitespace-nowrap">
+                        <span className="text-success">{gt.filled}</span><span className="text-muted-foreground/60"> / </span><span className="text-muted-foreground">{gt.empty}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-muted/30">
+                  <td className="p-3 sticky left-0 bg-muted/30 font-semibold">Total</td>
+                  {matrix.sizes.map((s) => {
+                    const t = matrix.sizeTotals.get(s.name)!;
+                    return (
+                      <td key={s.name} className="p-3 text-center font-display font-bold whitespace-nowrap">
+                        <span className="text-success">{t.filled}</span><span className="text-muted-foreground/60"> / </span><span className="text-muted-foreground">{t.empty}</span>
+                      </td>
+                    );
+                  })}
+                  <td className="p-3 text-center bg-muted/50 font-display font-bold">
+                    <span className="text-success">{matrix.totalFilled}</span><span className="text-muted-foreground/60"> / </span><span className="text-muted-foreground">{matrix.totalEmpty}</span>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+            <div className="px-4 py-2 border-t text-[10px] text-muted-foreground flex items-center gap-3">
+              <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-success" /> Filled (F)</span>
+              <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-muted-foreground" /> Empty (E)</span>
+            </div>
           </div>
         )}
-      </div>
+      </Card>
 
       <div>
 
