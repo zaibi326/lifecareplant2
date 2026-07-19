@@ -161,10 +161,28 @@ function CustomerProfilePage() {
       </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Link to="/movements" search={{ type: "receive" }}><Button variant="outline" className="w-full h-12 gap-2"><ArrowDownToLine className="size-4" /> Receive</Button></Link>
-        <Link to="/movements" search={{ type: "deliver" }}><Button variant="outline" className="w-full h-12 gap-2"><ArrowUpFromLine className="size-4" /> Deliver</Button></Link>
-        <Link to="/payments"><Button variant="outline" className="w-full h-12 gap-2"><Wallet className="size-4" /> Payment</Button></Link>
-        <Button onClick={printStatement} className="h-12 gap-2"><Printer className="size-4" /> Print Statement</Button>
+        <Link to="/movements" search={{ type: "receive" }}>
+          <Button variant="outline" className="w-full h-14 flex-col gap-0.5 border-brand/30 hover:bg-brand/5 hover:border-brand/60">
+            <ArrowDownToLine className="size-4 text-brand" />
+            <span className="text-xs font-semibold">Receive</span>
+          </Button>
+        </Link>
+        <Link to="/movements" search={{ type: "deliver" }}>
+          <Button variant="outline" className="w-full h-14 flex-col gap-0.5 border-primary/30 hover:bg-primary/5 hover:border-primary/60">
+            <ArrowUpFromLine className="size-4 text-primary" />
+            <span className="text-xs font-semibold">Deliver</span>
+          </Button>
+        </Link>
+        <Link to="/payments">
+          <Button variant="outline" className="w-full h-14 flex-col gap-0.5 border-success/30 hover:bg-success/5 hover:border-success/60">
+            <Wallet className="size-4 text-success" />
+            <span className="text-xs font-semibold">Payment</span>
+          </Button>
+        </Link>
+        <Button onClick={printStatement} className="h-14 flex-col gap-0.5">
+          <Printer className="size-4" />
+          <span className="text-xs font-semibold">Statement</span>
+        </Button>
       </div>
 
       <Card className="overflow-hidden">
