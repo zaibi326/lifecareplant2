@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_authenticated/customers")({
 });
 
 type OpenRow = { gas_type_id: string; cylinder_size_id: string; condition: "filled" | "empty"; quantity: number };
-type EditState = { id: string; name: string; phone: string; address: string; category: string; opening_due: number; notes: string } | null;
+type EditState = { id: string; name: string; phone: string; address: string; category: string; opening_due: number; karaya_per_cylinder: number; notes: string } | null;
 
 function CustomersPage() {
   const qc = useQueryClient();
