@@ -492,6 +492,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_app_user: { Args: { _user_id: string }; Returns: boolean }
       next_invoice_number: { Args: never; Returns: string }
     }
     Enums: {
