@@ -164,6 +164,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          karaya_per_cylinder: number
           name: string
           notes: string | null
           opening_cylinders: number
@@ -177,6 +178,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          karaya_per_cylinder?: number
           name: string
           notes?: string | null
           opening_cylinders?: number
@@ -190,6 +192,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          karaya_per_cylinder?: number
           name?: string
           notes?: string | null
           opening_cylinders?: number

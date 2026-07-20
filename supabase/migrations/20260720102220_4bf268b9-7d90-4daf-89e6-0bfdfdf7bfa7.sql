@@ -1,0 +1,1 @@
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS karaya_per_cylinder numeric NOT NULL DEFAULT 0;
