@@ -14,210 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      audit_log: {
-        Row: {
-          action: string
-          created_at: string
-          entity: string
-          entity_id: string | null
-          id: string
-          meta: Json
-          summary: string | null
-          user_email: string | null
-          user_id: string | null
-        }
-        Insert: {
-          action: string
-          created_at?: string
-          entity: string
-          entity_id?: string | null
-          id?: string
-          meta?: Json
-          summary?: string | null
-          user_email?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          action?: string
-          created_at?: string
-          entity?: string
-          entity_id?: string | null
-          id?: string
-          meta?: Json
-          summary?: string | null
-          user_email?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      branches: {
-        Row: {
-          active: boolean
-          address: string | null
-          code: string | null
-          created_at: string
-          created_by: string | null
-          id: string
-          is_default: boolean
-          name: string
-          phone: string | null
-          updated_at: string
-        }
-        Insert: {
-          active?: boolean
-          address?: string | null
-          code?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          is_default?: boolean
-          name: string
-          phone?: string | null
-          updated_at?: string
-        }
-        Update: {
-          active?: boolean
-          address?: string | null
-          code?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          is_default?: boolean
-          name?: string
-          phone?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      customer_prices: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          customer_id: string
-          cylinder_size_id: string
-          gas_type_id: string
-          id: string
-          rate: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          customer_id: string
-          cylinder_size_id: string
-          gas_type_id: string
-          id?: string
-          rate: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string
-          cylinder_size_id?: string
-          gas_type_id?: string
-          id?: string
-          rate?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      employees: {
-
-        Row: {
-          active: boolean
-          address: string | null
-          cnic: string | null
-          created_at: string
-          created_by: string | null
-          id: string
-          joining_date: string | null
-          monthly_salary: number | null
-          name: string
-          notes: string | null
-          phone: string | null
-          role: string | null
-          updated_at: string
-        }
-        Insert: {
-          active?: boolean
-          address?: string | null
-          cnic?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          joining_date?: string | null
-          monthly_salary?: number | null
-          name: string
-          notes?: string | null
-          phone?: string | null
-          role?: string | null
-          updated_at?: string
-        }
-        Update: {
-          active?: boolean
-          address?: string | null
-          cnic?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          joining_date?: string | null
-          monthly_salary?: number | null
-          name?: string
-          notes?: string | null
-          phone?: string | null
-          role?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      vehicles: {
-        Row: {
-          active: boolean
-          capacity_cylinders: number | null
-          created_at: string
-          created_by: string | null
-          driver_name: string | null
-          driver_phone: string | null
-          id: string
-          make_model: string | null
-          notes: string | null
-          registration_number: string
-          type: string | null
-          updated_at: string
-        }
-        Insert: {
-          active?: boolean
-          capacity_cylinders?: number | null
-          created_at?: string
-          created_by?: string | null
-          driver_name?: string | null
-          driver_phone?: string | null
-          id?: string
-          make_model?: string | null
-          notes?: string | null
-          registration_number: string
-          type?: string | null
-          updated_at?: string
-        }
-        Update: {
-          active?: boolean
-          capacity_cylinders?: number | null
-          created_at?: string
-          created_by?: string | null
-          driver_name?: string | null
-          driver_phone?: string | null
-          id?: string
-          make_model?: string | null
-          notes?: string | null
-          registration_number?: string
-          type?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       customer_opening_balances: {
-
         Row: {
           condition: Database["public"]["Enums"]["cylinder_condition"]
           created_at: string
@@ -408,8 +205,6 @@ export type Database = {
       cylinder_sizes: {
         Row: {
           active: boolean
-          capacity: number | null
-          capacity_unit: string
           created_at: string
           id: string
           name: string
@@ -417,8 +212,6 @@ export type Database = {
         }
         Insert: {
           active?: boolean
-          capacity?: number | null
-          capacity_unit?: string
           created_at?: string
           id?: string
           name: string
@@ -426,8 +219,6 @@ export type Database = {
         }
         Update: {
           active?: boolean
-          capacity?: number | null
-          capacity_unit?: string
           created_at?: string
           id?: string
           name?: string
@@ -435,115 +226,6 @@ export type Database = {
         }
         Relationships: []
       }
-      expenses: {
-        Row: {
-          amount: number
-          category: string
-          created_at: string
-          created_by: string | null
-          date: string
-          id: string
-          notes: string | null
-          payee: string | null
-          reference_number: string | null
-        }
-        Insert: {
-          amount: number
-          category: string
-          created_at?: string
-          created_by?: string | null
-          date?: string
-          id?: string
-          notes?: string | null
-          payee?: string | null
-          reference_number?: string | null
-        }
-        Update: {
-          amount?: number
-          category?: string
-          created_at?: string
-          created_by?: string | null
-          date?: string
-          id?: string
-          notes?: string | null
-          payee?: string | null
-          reference_number?: string | null
-        }
-        Relationships: []
-      }
-      gas_purchases: {
-        Row: {
-          conversion_factor: number | null
-          created_at: string
-          created_by: string | null
-          cubic_meter: number
-          date: string
-          gas_type_id: string
-          id: string
-          invoice_number: string | null
-          kg: number | null
-          purchase_rate: number | null
-          quantity: number
-          remarks: string | null
-          supplier_id: string | null
-          tank_number: string | null
-          total_amount: number | null
-          unit: string
-        }
-        Insert: {
-          conversion_factor?: number | null
-          created_at?: string
-          created_by?: string | null
-          cubic_meter?: number
-          date?: string
-          gas_type_id: string
-          id?: string
-          invoice_number?: string | null
-          kg?: number | null
-          purchase_rate?: number | null
-          quantity: number
-          remarks?: string | null
-          supplier_id?: string | null
-          tank_number?: string | null
-          total_amount?: number | null
-          unit?: string
-        }
-        Update: {
-          conversion_factor?: number | null
-          created_at?: string
-          created_by?: string | null
-          cubic_meter?: number
-          date?: string
-          gas_type_id?: string
-          id?: string
-          invoice_number?: string | null
-          kg?: number | null
-          purchase_rate?: number | null
-          quantity?: number
-          remarks?: string | null
-          supplier_id?: string | null
-          tank_number?: string | null
-          total_amount?: number | null
-          unit?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "gas_purchases_gas_type_id_fkey"
-            columns: ["gas_type_id"]
-            isOneToOne: false
-            referencedRelation: "gas_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "gas_purchases_supplier_id_fkey"
-            columns: ["supplier_id"]
-            isOneToOne: false
-            referencedRelation: "suppliers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-
       gas_types: {
         Row: {
           active: boolean
@@ -671,12 +353,10 @@ export type Database = {
       }
       production: {
         Row: {
-          consumed_unit: string
           created_at: string
           created_by: string | null
           cylinder_size_id: string
           date: string
-          gas_consumed: number | null
           gas_type_id: string
           id: string
           operator_name: string | null
@@ -684,12 +364,10 @@ export type Database = {
           remarks: string | null
         }
         Insert: {
-          consumed_unit?: string
           created_at?: string
           created_by?: string | null
           cylinder_size_id: string
           date?: string
-          gas_consumed?: number | null
           gas_type_id: string
           id?: string
           operator_name?: string | null
@@ -697,19 +375,16 @@ export type Database = {
           remarks?: string | null
         }
         Update: {
-          consumed_unit?: string
           created_at?: string
           created_by?: string | null
           cylinder_size_id?: string
           date?: string
-          gas_consumed?: number | null
           gas_type_id?: string
           id?: string
           operator_name?: string | null
           quantity?: number
           remarks?: string | null
         }
-
         Relationships: [
           {
             foreignKeyName: "production_cylinder_size_id_fkey"
@@ -757,10 +432,7 @@ export type Database = {
           id: number
           invoice_footer: string | null
           invoice_prefix: string | null
-          oxygen_conversion_factor: number
-          total_owned_cylinders: number
           plant_opening_stock: number
-
           tax_percent: number | null
           updated_at: string
         }
@@ -772,8 +444,6 @@ export type Database = {
           id?: number
           invoice_footer?: string | null
           invoice_prefix?: string | null
-          oxygen_conversion_factor?: number
-          total_owned_cylinders?: number
           plant_opening_stock?: number
           tax_percent?: number | null
           updated_at?: string
@@ -786,59 +456,13 @@ export type Database = {
           id?: number
           invoice_footer?: string | null
           invoice_prefix?: string | null
-          oxygen_conversion_factor?: number
-          total_owned_cylinders?: number
           plant_opening_stock?: number
-
           tax_percent?: number | null
           updated_at?: string
         }
         Relationships: []
       }
-      suppliers: {
-        Row: {
-          active: boolean
-          address: string | null
-          contact_person: string | null
-          created_at: string
-          created_by: string | null
-          id: string
-          name: string
-          notes: string | null
-          ntn_gst: string | null
-          phone: string | null
-          updated_at: string
-        }
-        Insert: {
-          active?: boolean
-          address?: string | null
-          contact_person?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          name: string
-          notes?: string | null
-          ntn_gst?: string | null
-          phone?: string | null
-          updated_at?: string
-        }
-        Update: {
-          active?: boolean
-          address?: string | null
-          contact_person?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          name?: string
-          notes?: string | null
-          ntn_gst?: string | null
-          phone?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       user_roles: {
-
         Row: {
           id: string
           role: Database["public"]["Enums"]["app_role"]
