@@ -405,48 +405,69 @@ export type Database = {
         Row: {
           amount: number | null
           bill_number: string | null
+          conversion_factor: number | null
           created_at: string
           created_by: string | null
           cubic_meter: number | null
           date: string
           gas_type_id: string | null
           id: string
+          invoice_number: string | null
+          kg: number | null
           notes: string | null
+          purchase_rate: number | null
           quantity: number
           rate: number | null
+          remarks: string | null
           supplier_id: string | null
+          tank_number: string | null
+          total_amount: number | null
           unit: string
           updated_at: string
         }
         Insert: {
           amount?: number | null
           bill_number?: string | null
+          conversion_factor?: number | null
           created_at?: string
           created_by?: string | null
           cubic_meter?: number | null
           date?: string
           gas_type_id?: string | null
           id?: string
+          invoice_number?: string | null
+          kg?: number | null
           notes?: string | null
+          purchase_rate?: number | null
           quantity?: number
           rate?: number | null
+          remarks?: string | null
           supplier_id?: string | null
+          tank_number?: string | null
+          total_amount?: number | null
           unit?: string
           updated_at?: string
         }
         Update: {
           amount?: number | null
           bill_number?: string | null
+          conversion_factor?: number | null
           created_at?: string
           created_by?: string | null
           cubic_meter?: number | null
           date?: string
           gas_type_id?: string | null
           id?: string
+          invoice_number?: string | null
+          kg?: number | null
           notes?: string | null
+          purchase_rate?: number | null
           quantity?: number
           rate?: number | null
+          remarks?: string | null
           supplier_id?: string | null
+          tank_number?: string | null
+          total_amount?: number | null
           unit?: string
           updated_at?: string
         }
@@ -760,6 +781,48 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          active: boolean
+          capacity_cylinders: number | null
+          created_at: string
+          driver_name: string | null
+          driver_phone: string | null
+          id: string
+          make_model: string | null
+          notes: string | null
+          registration_number: string
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          capacity_cylinders?: number | null
+          created_at?: string
+          driver_name?: string | null
+          driver_phone?: string | null
+          id?: string
+          make_model?: string | null
+          notes?: string | null
+          registration_number: string
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          capacity_cylinders?: number | null
+          created_at?: string
+          driver_name?: string | null
+          driver_phone?: string | null
+          id?: string
+          make_model?: string | null
+          notes?: string | null
+          registration_number?: string
+          type?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
