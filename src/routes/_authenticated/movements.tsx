@@ -691,11 +691,20 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
           </div>
         ))}
         {type === "deliver" && lines.length > 0 && (
-          <div className="flex items-center justify-between border-t pt-2 mt-2">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">Cylinders Total</span>
-            <span className="font-semibold">{formatCurrency(linesTotal)}</span>
-          </div>
+          <>
+            <div className="flex items-center justify-between border-t pt-2 mt-2">
+              <span className="text-xs uppercase tracking-wider text-muted-foreground">Cylinders Total</span>
+              <span className="font-semibold">{formatCurrency(linesTotal)}</span>
+            </div>
+            {cylinderQtyTotal > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Karaya ({cylinderQtyTotal} × {formatCurrency(karayaRate)})</span>
+                <span className="font-semibold">{formatCurrency(cylinderKaraya)}</span>
+              </div>
+            )}
+          </>
         )}
+
       </div>
 
       {type === "deliver" && (
