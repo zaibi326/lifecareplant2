@@ -401,10 +401,45 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
     : 0;
   const grandTotal = linesTotal + extrasTotal;
 
+  const { data: custPrices } = useQuery({
+    queryKey: ["customer-prices", customer],
+    enabled: !!customer,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("customer_prices")
+        .select("gas_type_id,cylinder_size_id,price")
+        .eq("customer_id", customer);
+      return data ?? [];
+    },
+  });
+  const priceFor = (gid: string, sid: string) =>
+    Number((custPrices ?? []).find((p: any) => p.gas_type_id === gid && p.cylinder_size_id === sid)?.price ?? 0);
+
+  // Auto-fill line rate from customer_prices when a matching price exists and rate is empty.
+  useEffect(() => {
+    if (type !== "deliver" || !customer || !custPrices) return;
+    setLines((rows) =>
+      rows.map((r) => {
+        if (!r.gas_type_id || !r.cylinder_size_id) return r;
+        if (Number(r.rate) > 0) return r;
+        const p = priceFor(r.gas_type_id, r.cylinder_size_id);
+        return p > 0 ? { ...r, rate: p } : r;
+      }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customer, custPrices]);
+
+  const cylinderKaraya = type === "deliver"
+    ? lines.reduce((a, l) => a + Number(l.quantity || 0) * priceFor(l.gas_type_id, l.cylinder_size_id), 0)
+    : 0;
+  const cylinderQtyTotal = type === "deliver"
+    ? lines.reduce((a, l) => a + Number(l.quantity || 0), 0)
+    : 0;
+
   const selectedVehicle = (lookups?.vehicles ?? []).find((x: any) => x.id === vehicleId);
   const perTripRent = Number(selectedVehicle?.per_trip_rent ?? 0);
   const deliveryExpenseTotal =
-    perTripRent + (Number(fuel) || 0) + (Number(labour) || 0) + (Number(loadingExp) || 0) + (Number(tollTax) || 0) + (Number(misc) || 0);
+    perTripRent + cylinderKaraya + (Number(fuel) || 0) + (Number(labour) || 0) + (Number(loadingExp) || 0) + (Number(tollTax) || 0) + (Number(misc) || 0);
 
   useEffect(() => {
     if (vehicleId && vehicleId !== "none") {
