@@ -233,10 +233,12 @@ function CustomersPage() {
   const openEdit = (c: any) => {
     setEditing({
       id: c.id, name: c.name ?? "", phone: c.phone ?? "", address: c.address ?? "",
-      category: c.category ?? "", opening_due: Number(c.opening_due ?? 0), notes: c.notes ?? "",
+      category: c.category ?? "", opening_due: Number(c.opening_due ?? 0),
+      karaya_per_cylinder: Number(c.karaya_per_cylinder ?? 0), notes: c.notes ?? "",
     });
     setOpen(true);
   };
+
 
   return (
     <div className="space-y-5">
