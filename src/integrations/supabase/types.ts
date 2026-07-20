@@ -208,6 +208,7 @@ export type Database = {
           customer_id: string
           cylinder_size_id: string
           date: string
+          driver_id: string | null
           driver_name: string | null
           ecr_number: string | null
           extras: Json
@@ -220,6 +221,7 @@ export type Database = {
           remarks: string | null
           total_amount: number | null
           type: Database["public"]["Enums"]["movement_type"]
+          vehicle_id: string | null
           vehicle_number: string | null
         }
         Insert: {
@@ -230,6 +232,7 @@ export type Database = {
           customer_id: string
           cylinder_size_id: string
           date?: string
+          driver_id?: string | null
           driver_name?: string | null
           ecr_number?: string | null
           extras?: Json
@@ -242,6 +245,7 @@ export type Database = {
           remarks?: string | null
           total_amount?: number | null
           type: Database["public"]["Enums"]["movement_type"]
+          vehicle_id?: string | null
           vehicle_number?: string | null
         }
         Update: {
@@ -252,6 +256,7 @@ export type Database = {
           customer_id?: string
           cylinder_size_id?: string
           date?: string
+          driver_id?: string | null
           driver_name?: string | null
           ecr_number?: string | null
           extras?: Json
@@ -264,6 +269,7 @@ export type Database = {
           remarks?: string | null
           total_amount?: number | null
           type?: Database["public"]["Enums"]["movement_type"]
+          vehicle_id?: string | null
           vehicle_number?: string | null
         }
         Relationships: [
@@ -282,10 +288,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "cylinder_movements_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "cylinder_movements_gas_type_id_fkey"
             columns: ["gas_type_id"]
             isOneToOne: false
             referencedRelation: "gas_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cylinder_movements_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
@@ -319,6 +339,122 @@ export type Database = {
           volume_liters?: number | null
         }
         Relationships: []
+      }
+      delivery_expenses: {
+        Row: {
+          created_at: string
+          date: string
+          driver_id: string | null
+          fuel: number
+          id: string
+          invoice_number: string | null
+          labour: number
+          loading: number
+          miscellaneous: number
+          notes: string | null
+          toll_tax: number
+          total: number
+          updated_at: string
+          vehicle_id: string | null
+          vehicle_rent: number
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          driver_id?: string | null
+          fuel?: number
+          id?: string
+          invoice_number?: string | null
+          labour?: number
+          loading?: number
+          miscellaneous?: number
+          notes?: string | null
+          toll_tax?: number
+          total?: number
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_rent?: number
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          driver_id?: string | null
+          fuel?: number
+          id?: string
+          invoice_number?: string | null
+          labour?: number
+          loading?: number
+          miscellaneous?: number
+          notes?: string | null
+          toll_tax?: number
+          total?: number
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_rent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_expenses_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_expenses_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drivers: {
+        Row: {
+          assigned_vehicle_id: string | null
+          cnic: string | null
+          created_at: string
+          id: string
+          license_number: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_vehicle_id?: string | null
+          cnic?: string | null
+          created_at?: string
+          id?: string
+          license_number?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_vehicle_id?: string | null
+          cnic?: string | null
+          created_at?: string
+          id?: string
+          license_number?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drivers_assigned_vehicle_id_fkey"
+            columns: ["assigned_vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       employees: {
         Row: {
@@ -789,42 +925,62 @@ export type Database = {
           active: boolean
           capacity_cylinders: number | null
           created_at: string
+          default_driver_id: string | null
           driver_name: string | null
           driver_phone: string | null
           id: string
           make_model: string | null
           notes: string | null
+          per_trip_rent: number | null
           registration_number: string
+          status: string | null
           type: string | null
           updated_at: string
+          vehicle_name: string | null
         }
         Insert: {
           active?: boolean
           capacity_cylinders?: number | null
           created_at?: string
+          default_driver_id?: string | null
           driver_name?: string | null
           driver_phone?: string | null
           id?: string
           make_model?: string | null
           notes?: string | null
+          per_trip_rent?: number | null
           registration_number: string
+          status?: string | null
           type?: string | null
           updated_at?: string
+          vehicle_name?: string | null
         }
         Update: {
           active?: boolean
           capacity_cylinders?: number | null
           created_at?: string
+          default_driver_id?: string | null
           driver_name?: string | null
           driver_phone?: string | null
           id?: string
           make_model?: string | null
           notes?: string | null
+          per_trip_rent?: number | null
           registration_number?: string
+          status?: string | null
           type?: string | null
           updated_at?: string
+          vehicle_name?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_default_driver_id_fkey"
+            columns: ["default_driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
