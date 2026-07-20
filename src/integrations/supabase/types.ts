@@ -343,6 +343,7 @@ export type Database = {
       delivery_expenses: {
         Row: {
           created_at: string
+          cylinder_karaya: number
           date: string
           driver_id: string | null
           fuel: number
@@ -360,6 +361,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          cylinder_karaya?: number
           date?: string
           driver_id?: string | null
           fuel?: number
@@ -377,6 +379,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          cylinder_karaya?: number
           date?: string
           driver_id?: string | null
           fuel?: number
