@@ -386,7 +386,7 @@ function PriceListDialog({ customerId, customerName, open, onOpenChange }: {
     mutationFn: async () => {
       if (!gasId || !sizeId || rate === "") throw new Error("Select gas, size and a rate.");
       const { error } = await supabase.from("customer_prices").upsert(
-        { customer_id: customerId, gas_type_id: gasId, cylinder_size_id: sizeId, rate: Number(rate) },
+        { customer_id: customerId, gas_type_id: gasId, cylinder_size_id: sizeId, price: Number(rate) },
         { onConflict: "customer_id,gas_type_id,cylinder_size_id" }
       );
       if (error) throw error;
