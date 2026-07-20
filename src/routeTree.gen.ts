@@ -16,11 +16,13 @@ import { Route as AuthenticatedAuditLogRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedBackupRouteImport } from './routes/_authenticated/backup'
 import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedDriversRouteImport } from './routes/_authenticated/drivers'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
 import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
 import { Route as AuthenticatedMovementsRouteImport } from './routes/_authenticated/movements'
 import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticated/payments'
 import { Route as AuthenticatedProductionRouteImport } from './routes/_authenticated/production'
+import { Route as AuthenticatedProfitRouteImport } from './routes/_authenticated/profit'
 import { Route as AuthenticatedPurchasesRouteImport } from './routes/_authenticated/purchases'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -63,6 +65,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDriversRoute = AuthenticatedDriversRouteImport.update({
+  id: '/drivers',
+  path: '/drivers',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedEmployeesRoute = AuthenticatedEmployeesRouteImport.update({
   id: '/employees',
   path: '/employees',
@@ -86,6 +93,11 @@ const AuthenticatedPaymentsRoute = AuthenticatedPaymentsRouteImport.update({
 const AuthenticatedProductionRoute = AuthenticatedProductionRouteImport.update({
   id: '/production',
   path: '/production',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedProfitRoute = AuthenticatedProfitRouteImport.update({
+  id: '/profit',
+  path: '/profit',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPurchasesRoute = AuthenticatedPurchasesRouteImport.update({
@@ -132,11 +144,13 @@ export interface FileRoutesByFullPath {
   '/backup': typeof AuthenticatedBackupRoute
   '/customers': typeof AuthenticatedCustomersRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/drivers': typeof AuthenticatedDriversRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/movements': typeof AuthenticatedMovementsRoute
   '/payments': typeof AuthenticatedPaymentsRoute
   '/production': typeof AuthenticatedProductionRoute
+  '/profit': typeof AuthenticatedProfitRoute
   '/purchases': typeof AuthenticatedPurchasesRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -152,11 +166,13 @@ export interface FileRoutesByTo {
   '/backup': typeof AuthenticatedBackupRoute
   '/customers': typeof AuthenticatedCustomersRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/drivers': typeof AuthenticatedDriversRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/movements': typeof AuthenticatedMovementsRoute
   '/payments': typeof AuthenticatedPaymentsRoute
   '/production': typeof AuthenticatedProductionRoute
+  '/profit': typeof AuthenticatedProfitRoute
   '/purchases': typeof AuthenticatedPurchasesRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -174,11 +190,13 @@ export interface FileRoutesById {
   '/_authenticated/backup': typeof AuthenticatedBackupRoute
   '/_authenticated/customers': typeof AuthenticatedCustomersRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/drivers': typeof AuthenticatedDriversRoute
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
   '/_authenticated/movements': typeof AuthenticatedMovementsRoute
   '/_authenticated/payments': typeof AuthenticatedPaymentsRoute
   '/_authenticated/production': typeof AuthenticatedProductionRoute
+  '/_authenticated/profit': typeof AuthenticatedProfitRoute
   '/_authenticated/purchases': typeof AuthenticatedPurchasesRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -196,11 +214,13 @@ export interface FileRouteTypes {
     | '/backup'
     | '/customers'
     | '/dashboard'
+    | '/drivers'
     | '/employees'
     | '/expenses'
     | '/movements'
     | '/payments'
     | '/production'
+    | '/profit'
     | '/purchases'
     | '/reports'
     | '/settings'
@@ -216,11 +236,13 @@ export interface FileRouteTypes {
     | '/backup'
     | '/customers'
     | '/dashboard'
+    | '/drivers'
     | '/employees'
     | '/expenses'
     | '/movements'
     | '/payments'
     | '/production'
+    | '/profit'
     | '/purchases'
     | '/reports'
     | '/settings'
@@ -237,11 +259,13 @@ export interface FileRouteTypes {
     | '/_authenticated/backup'
     | '/_authenticated/customers'
     | '/_authenticated/dashboard'
+    | '/_authenticated/drivers'
     | '/_authenticated/employees'
     | '/_authenticated/expenses'
     | '/_authenticated/movements'
     | '/_authenticated/payments'
     | '/_authenticated/production'
+    | '/_authenticated/profit'
     | '/_authenticated/purchases'
     | '/_authenticated/reports'
     | '/_authenticated/settings'
@@ -308,6 +332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/drivers': {
+      id: '/_authenticated/drivers'
+      path: '/drivers'
+      fullPath: '/drivers'
+      preLoaderRoute: typeof AuthenticatedDriversRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/employees': {
       id: '/_authenticated/employees'
       path: '/employees'
@@ -341,6 +372,13 @@ declare module '@tanstack/react-router' {
       path: '/production'
       fullPath: '/production'
       preLoaderRoute: typeof AuthenticatedProductionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/profit': {
+      id: '/_authenticated/profit'
+      path: '/profit'
+      fullPath: '/profit'
+      preLoaderRoute: typeof AuthenticatedProfitRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/purchases': {
@@ -415,11 +453,13 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBackupRoute: typeof AuthenticatedBackupRoute
   AuthenticatedCustomersRoute: typeof AuthenticatedCustomersRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDriversRoute: typeof AuthenticatedDriversRoute
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedExpensesRoute: typeof AuthenticatedExpensesRoute
   AuthenticatedMovementsRoute: typeof AuthenticatedMovementsRoute
   AuthenticatedPaymentsRoute: typeof AuthenticatedPaymentsRoute
   AuthenticatedProductionRoute: typeof AuthenticatedProductionRoute
+  AuthenticatedProfitRoute: typeof AuthenticatedProfitRoute
   AuthenticatedPurchasesRoute: typeof AuthenticatedPurchasesRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -433,11 +473,13 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBackupRoute: AuthenticatedBackupRoute,
   AuthenticatedCustomersRoute: AuthenticatedCustomersRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDriversRoute: AuthenticatedDriversRoute,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedExpensesRoute: AuthenticatedExpensesRoute,
   AuthenticatedMovementsRoute: AuthenticatedMovementsRoute,
   AuthenticatedPaymentsRoute: AuthenticatedPaymentsRoute,
   AuthenticatedProductionRoute: AuthenticatedProductionRoute,
+  AuthenticatedProfitRoute: AuthenticatedProfitRoute,
   AuthenticatedPurchasesRoute: AuthenticatedPurchasesRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,

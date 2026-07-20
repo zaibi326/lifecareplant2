@@ -345,20 +345,32 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
     setExtras((r) => r.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
   const delExtra = (i: number) => setExtras((r) => r.filter((_, idx) => idx !== i));
 
+  const [vehicleId, setVehicleId] = useState<string>(editing?.vehicle_id ?? "none");
+  const [driverId, setDriverId] = useState<string>(editing?.driver_id ?? "none");
+  const [fuel, setFuel] = useState<number | "">("");
+  const [labour, setLabour] = useState<number | "">("");
+  const [loadingExp, setLoadingExp] = useState<number | "">("");
+  const [tollTax, setTollTax] = useState<number | "">("");
+  const [misc, setMisc] = useState<number | "">("");
+
   const { data: lookups } = useQuery({
     queryKey: ["movement-lookups"],
     queryFn: async () => {
-      const [c, g, s, ps] = await Promise.all([
+      const [c, g, s, ps, v, d] = await Promise.all([
         supabase.from("customers").select("id,name").order("name"),
         supabase.from("gas_types").select("id,name").eq("active", true).order("name"),
         supabase.from("cylinder_sizes").select("id,name").eq("active", true).order("name"),
         supabase.from("part_sizes").select("label").eq("active", true).order("sort_order").order("label"),
+        supabase.from("vehicles").select("id,registration_number,vehicle_name,per_trip_rent,default_driver_id").eq("status", "active").order("registration_number"),
+        supabase.from("drivers").select("id,name").eq("status", "active").order("name"),
       ]);
       return {
         customers: c.data ?? [],
         gases: g.data ?? [],
         sizes: s.data ?? [],
         partSizes: (ps.data ?? []).map((r: any) => String(r.label)),
+        vehicles: v.data ?? [],
+        drivers: d.data ?? [],
       };
     },
   });
@@ -389,14 +401,33 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
     : 0;
   const grandTotal = linesTotal + extrasTotal;
 
+  const selectedVehicle = (lookups?.vehicles ?? []).find((x: any) => x.id === vehicleId);
+  const perTripRent = Number(selectedVehicle?.per_trip_rent ?? 0);
+  const deliveryExpenseTotal =
+    perTripRent + (Number(fuel) || 0) + (Number(labour) || 0) + (Number(loadingExp) || 0) + (Number(tollTax) || 0) + (Number(misc) || 0);
+
+  useEffect(() => {
+    if (vehicleId && vehicleId !== "none") {
+      const v = (lookups?.vehicles ?? []).find((x: any) => x.id === vehicleId);
+      if (v?.default_driver_id) setDriverId(v.default_driver_id as string);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicleId, lookups]);
+
   const save = useMutation({
     mutationFn: async (f: FormData) => {
       if (!customer) throw new Error("Customer required");
       const valid = lines.filter((l) => l.gas_type_id && l.cylinder_size_id && Number(l.quantity) > 0);
       if (valid.length === 0) throw new Error("At least one line item required");
       const cond = String(f.get("condition") ?? "") as any;
-      const vehicle_number = String(f.get("vehicle_number") ?? "").trim() || null;
-      const driver_name = String(f.get("driver_name") ?? "").trim() || null;
+      const selVehicle = (lookups?.vehicles ?? []).find((x: any) => x.id === vehicleId);
+      const selDriver = (lookups?.drivers ?? []).find((x: any) => x.id === driverId);
+      const vehicle_number = String(f.get("vehicle_number") ?? "").trim()
+        || (selVehicle ? String(selVehicle.registration_number) : "") || null;
+      const driver_name = String(f.get("driver_name") ?? "").trim()
+        || (selDriver ? String(selDriver.name) : "") || null;
+      const vehicle_id = vehicleId && vehicleId !== "none" ? vehicleId : null;
+      const driver_id = driverId && driverId !== "none" ? driverId : null;
       const remarks = String(f.get("remarks") ?? "").trim() || null;
       const condition = cond || (type === "receive" ? "empty" : "filled");
       const offline = typeof navigator !== "undefined" && !navigator.onLine;
@@ -444,6 +475,8 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
           date,
           vehicle_number,
           driver_name,
+          vehicle_id,
+          driver_id,
           condition,
           remarks,
           bill_number,
@@ -469,6 +502,8 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
           date,
           vehicle_number,
           driver_name,
+          vehicle_id,
+          driver_id,
           condition,
           remarks,
           bill_number,
@@ -495,6 +530,34 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
 
       const { error } = await supabase.from("cylinder_movements").insert(payloads);
       if (error) throw error;
+
+      // Auto delivery expense: per-trip rent + manual expenses → delivery_expenses + expenses.
+      if (type === "deliver" && (deliveryExpenseTotal > 0)) {
+        const invNo = (payloads[0] as any)?.invoice_number ?? null;
+        const { error: deErr } = await supabase.from("delivery_expenses").insert({
+          date,
+          invoice_number: invNo,
+          vehicle_id,
+          driver_id,
+          vehicle_rent: perTripRent,
+          fuel: Number(fuel) || 0,
+          labour: Number(labour) || 0,
+          loading: Number(loadingExp) || 0,
+          toll_tax: Number(tollTax) || 0,
+          miscellaneous: Number(misc) || 0,
+          total: deliveryExpenseTotal,
+          notes: vehicle_number ? `Delivery ${invNo ?? ""} • ${vehicle_number}` : `Delivery ${invNo ?? ""}`,
+        });
+        if (deErr) throw deErr;
+        await supabase.from("expenses").insert({
+          date,
+          category: "Vehicle / Delivery",
+          amount: deliveryExpenseTotal,
+          payee: driver_name,
+          reference_number: invNo,
+          notes: `Auto delivery expense${vehicle_number ? ` • ${vehicle_number}` : ""}`,
+        });
+      }
       return { queued: false };
     },
     onSuccess: (res) => {
@@ -697,16 +760,6 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1.5 h-11" />
         </div>
         <div>
-          <Label className="text-xs">Vehicle #</Label>
-          <Input name="vehicle_number" defaultValue={editing?.vehicle_number ?? ""} className="mt-1.5 h-11" />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label className="text-xs">Driver</Label>
-          <Input name="driver_name" defaultValue={editing?.driver_name ?? ""} className="mt-1.5 h-11" />
-        </div>
-        <div>
           <Label className="text-xs">Cylinder Condition</Label>
           <Select name="condition" defaultValue={editing?.condition ?? (type === "receive" ? "empty" : "filled")}>
             <SelectTrigger className="mt-1.5 h-11"><SelectValue /></SelectTrigger>
@@ -718,6 +771,87 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
           </Select>
         </div>
       </div>
+
+      {type === "deliver" ? (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs">Vehicle</Label>
+            <Select value={vehicleId} onValueChange={setVehicleId}>
+              <SelectTrigger className="mt-1.5 h-11"><SelectValue placeholder="Select vehicle" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No vehicle</SelectItem>
+                {(lookups?.vehicles ?? []).map((v: any) => (
+                  <SelectItem key={v.id} value={v.id}>{v.registration_number}{v.vehicle_name ? ` — ${v.vehicle_name}` : ""}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Driver <span className="text-muted-foreground font-normal">(auto)</span></Label>
+            <Select value={driverId} onValueChange={setDriverId}>
+              <SelectTrigger className="mt-1.5 h-11"><SelectValue placeholder="Select driver" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No driver</SelectItem>
+                {(lookups?.drivers ?? []).map((d: any) => (
+                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {/* keep free-text fallbacks so existing flow & printing keep working */}
+          <input type="hidden" name="vehicle_number" value="" readOnly />
+          <input type="hidden" name="driver_name" value="" readOnly />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs">Vehicle #</Label>
+            <Input name="vehicle_number" defaultValue={editing?.vehicle_number ?? ""} className="mt-1.5 h-11" />
+          </div>
+          <div>
+            <Label className="text-xs">Driver</Label>
+            <Input name="driver_name" defaultValue={editing?.driver_name ?? ""} className="mt-1.5 h-11" />
+          </div>
+        </div>
+      )}
+
+      {type === "deliver" && (
+        <div className="rounded-lg border p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-semibold">Delivery Expense</Label>
+            {perTripRent > 0 && (
+              <span className="text-[11px] text-muted-foreground">Vehicle rent auto: <b className="text-foreground">{formatCurrency(perTripRent)}</b></span>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Fuel</Label>
+              <Input type="number" min={0} value={fuel} onChange={(e) => setFuel(e.target.value === "" ? "" : Number(e.target.value))} className="h-9 text-xs" />
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Labour</Label>
+              <Input type="number" min={0} value={labour} onChange={(e) => setLabour(e.target.value === "" ? "" : Number(e.target.value))} className="h-9 text-xs" />
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Loading</Label>
+              <Input type="number" min={0} value={loadingExp} onChange={(e) => setLoadingExp(e.target.value === "" ? "" : Number(e.target.value))} className="h-9 text-xs" />
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Toll Tax</Label>
+              <Input type="number" min={0} value={tollTax} onChange={(e) => setTollTax(e.target.value === "" ? "" : Number(e.target.value))} className="h-9 text-xs" />
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Misc</Label>
+              <Input type="number" min={0} value={misc} onChange={(e) => setMisc(e.target.value === "" ? "" : Number(e.target.value))} className="h-9 text-xs" />
+            </div>
+          </div>
+          <div className="flex items-center justify-between border-t pt-2">
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">Total Delivery Expense</span>
+            <span className="font-semibold">{formatCurrency(deliveryExpenseTotal)}</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground">Automatically posted to the Expense module on save.</p>
+        </div>
+      )}
 
       <div>
         <Label className="text-xs">Photos (optional, max 5)</Label>

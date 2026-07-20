@@ -1,7 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, Package, BarChart3, Settings, Plus, LogOut, ArrowDownToLine, ArrowUpFromLine, Wallet, Factory, Flame, Truck, PackagePlus, Receipt, Car, UserCog, History, DatabaseBackup } from "lucide-react";
+import { LayoutDashboard, Users, Package, BarChart3, Settings, Plus, LogOut, ArrowDownToLine, ArrowUpFromLine, Wallet, Factory, Flame, Truck, PackagePlus, Receipt, Car, UserCog, History, DatabaseBackup, TrendingUp } from "lucide-react";
 
 
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,11 @@ const navItems = [
   { to: "/stock", label: "Stock", icon: Package },
   { to: "/expenses", label: "Expenses", icon: Receipt },
   { to: "/vehicles", label: "Vehicles", icon: Car },
+  { to: "/drivers", label: "Drivers", icon: UserCog },
   { to: "/employees", label: "Employees", icon: UserCog },
+
   { to: "/reports", label: "Reports", icon: BarChart3 },
+  { to: "/profit", label: "Profit & Loss", icon: TrendingUp },
   { to: "/audit-log", label: "Audit Log", icon: History },
   { to: "/backup", label: "Backup", icon: DatabaseBackup },
   { to: "/settings", label: "Settings", icon: Settings },

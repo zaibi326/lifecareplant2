@@ -25,10 +25,14 @@ export const Route = createFileRoute("/_authenticated/vehicles")({
 });
 
 const VEHICLE_TYPES = ["truck", "pickup", "van", "rickshaw", "other"];
+const FUEL_TYPES = ["diesel", "petrol", "cng", "electric", "other"];
+const STATUSES = ["active", "maintenance", "inactive"];
 
 type EditState = {
   id: string; registration_number: string; type: string; make_model: string;
   driver_name: string; driver_phone: string; capacity_cylinders: number | ""; notes: string;
+  vehicle_name: string; fuel_type: string; status: string; default_driver_id: string;
+  daily_rent: number | ""; monthly_rent: number | ""; per_trip_rent: number | "";
 } | null;
 
 function VehiclesPage() {
@@ -36,8 +40,17 @@ function VehiclesPage() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<string>("truck");
+  const [fuelType, setFuelType] = useState<string>("diesel");
+  const [status, setStatus] = useState<string>("active");
+  const [defaultDriver, setDefaultDriver] = useState<string>("none");
   const [editing, setEditing] = useState<EditState>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const { data: drivers } = useQuery({
+    queryKey: ["drivers-lookup"],
+    queryFn: async () => (await supabase.from("drivers").select("id,name").eq("status", "active").order("name")).data ?? [],
+  });
+
 
   const { data } = useQuery({
     queryKey: ["vehicles"],
@@ -89,6 +102,11 @@ function VehiclesPage() {
     onError: (e: any) => { toast.error(e.message); setDeleteId(null); },
   });
 
+  const num = (v: FormDataEntryValue | null) => {
+    const s = String(v ?? "").trim();
+    return s ? Number(s) : null;
+  };
+
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -96,24 +114,40 @@ function VehiclesPage() {
     save.mutate({
       registration_number: String(f.get("registration_number") ?? "").trim(),
       type,
+      vehicle_name: String(f.get("vehicle_name") ?? "").trim() || null,
       make_model: String(f.get("make_model") ?? "").trim() || null,
       driver_name: String(f.get("driver_name") ?? "").trim() || null,
       driver_phone: String(f.get("driver_phone") ?? "").trim() || null,
       capacity_cylinders: cap ? Number(cap) : null,
+      fuel_type: fuelType,
+      status,
+      default_driver_id: defaultDriver === "none" ? null : defaultDriver,
+      daily_rent: num(f.get("daily_rent")),
+      monthly_rent: num(f.get("monthly_rent")),
+      per_trip_rent: num(f.get("per_trip_rent")),
       notes: String(f.get("notes") ?? "").trim() || null,
     });
   };
 
-  const openNew = () => { setEditing(null); setType("truck"); setOpen(true); };
+  const openNew = () => {
+    setEditing(null); setType("truck"); setFuelType("diesel"); setStatus("active"); setDefaultDriver("none"); setOpen(true);
+  };
   const openEdit = (v: any) => {
     setEditing({
       id: v.id, registration_number: v.registration_number ?? "", type: v.type ?? "truck",
       make_model: v.make_model ?? "", driver_name: v.driver_name ?? "", driver_phone: v.driver_phone ?? "",
       capacity_cylinders: v.capacity_cylinders ?? "", notes: v.notes ?? "",
+      vehicle_name: v.vehicle_name ?? "", fuel_type: v.fuel_type ?? "diesel", status: v.status ?? "active",
+      default_driver_id: v.default_driver_id ?? "none",
+      daily_rent: v.daily_rent ?? "", monthly_rent: v.monthly_rent ?? "", per_trip_rent: v.per_trip_rent ?? "",
     });
     setType(v.type ?? "truck");
+    setFuelType(v.fuel_type ?? "diesel");
+    setStatus(v.status ?? "active");
+    setDefaultDriver(v.default_driver_id ?? "none");
     setOpen(true);
   };
+
 
   return (
     <div className="space-y-5">
@@ -131,7 +165,10 @@ function VehiclesPage() {
         <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader><SheetTitle>{editing ? "Edit Vehicle" : "New Vehicle"}</SheetTitle></SheetHeader>
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
-            <Field label="Registration Number" name="registration_number" required defaultValue={editing?.registration_number} placeholder="LEB-1234" />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Registration Number" name="registration_number" required defaultValue={editing?.registration_number} placeholder="LEB-1234" />
+              <Field label="Vehicle Name" name="vehicle_name" defaultValue={editing?.vehicle_name} placeholder="Vehicle A" />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Type</Label>
@@ -145,14 +182,55 @@ function VehiclesPage() {
               <Field label="Make / Model" name="make_model" defaultValue={editing?.make_model} />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Driver Name" name="driver_name" defaultValue={editing?.driver_name} />
+              <div>
+                <Label className="text-xs">Fuel Type</Label>
+                <Select value={fuelType} onValueChange={setFuelType}>
+                  <SelectTrigger className="mt-1.5 h-11"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {FUEL_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Status</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger className="mt-1.5 h-11"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {STATUSES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Default Driver</Label>
+              <Select value={defaultDriver} onValueChange={setDefaultDriver}>
+                <SelectTrigger className="mt-1.5 h-11"><SelectValue placeholder="No default driver" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No default driver</SelectItem>
+                  {(drivers ?? []).map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">Manage drivers on the Employees / Drivers page.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Driver Name (free text)" name="driver_name" defaultValue={editing?.driver_name} />
               <Field label="Driver Phone" name="driver_phone" defaultValue={editing?.driver_phone} />
             </div>
             <Field label="Capacity (cylinders)" name="capacity_cylinders" type="number" defaultValue={editing?.capacity_cylinders} />
+            <div className="rounded-lg border p-3 space-y-3">
+              <Label className="text-xs font-semibold">Rent Configuration</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Field label="Per Trip" name="per_trip_rent" type="number" defaultValue={editing?.per_trip_rent} placeholder="1500" />
+                <Field label="Daily" name="daily_rent" type="number" defaultValue={editing?.daily_rent} placeholder="4000" />
+                <Field label="Monthly" name="monthly_rent" type="number" defaultValue={editing?.monthly_rent} placeholder="90000" />
+              </div>
+              <p className="text-[10px] text-muted-foreground">Per-trip rent auto-adds to delivery expense when this vehicle is used.</p>
+            </div>
             <div>
               <Label className="text-xs">Notes</Label>
               <Textarea name="notes" rows={2} defaultValue={editing?.notes} className="mt-1.5" />
             </div>
+
             <Button type="submit" disabled={save.isPending} className="w-full h-11">
               {save.isPending ? "Saving…" : editing ? "Update Vehicle" : "Save Vehicle"}
             </Button>
