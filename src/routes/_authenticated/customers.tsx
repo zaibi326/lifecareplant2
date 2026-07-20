@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_authenticated/customers")({
 });
 
 type OpenRow = { gas_type_id: string; cylinder_size_id: string; condition: "filled" | "empty"; quantity: number };
-type EditState = { id: string; name: string; phone: string; address: string; category: string; opening_due: number; notes: string } | null;
+type EditState = { id: string; name: string; phone: string; address: string; category: string; opening_due: number; karaya_per_cylinder: number; notes: string } | null;
 
 function CustomersPage() {
   const qc = useQueryClient();
@@ -218,8 +218,10 @@ function CustomersPage() {
       address: String(f.get("address") ?? "").trim() || null,
       category: String(f.get("category") ?? "").trim() || null,
       opening_due: Number(f.get("opening_due") ?? 0),
+      karaya_per_cylinder: Number(f.get("karaya_per_cylinder") ?? 0),
       notes: String(f.get("notes") ?? "").trim() || null,
     });
+
   };
 
   const addRow = () =>
@@ -231,10 +233,12 @@ function CustomersPage() {
   const openEdit = (c: any) => {
     setEditing({
       id: c.id, name: c.name ?? "", phone: c.phone ?? "", address: c.address ?? "",
-      category: c.category ?? "", opening_due: Number(c.opening_due ?? 0), notes: c.notes ?? "",
+      category: c.category ?? "", opening_due: Number(c.opening_due ?? 0),
+      karaya_per_cylinder: Number(c.karaya_per_cylinder ?? 0), notes: c.notes ?? "",
     });
     setOpen(true);
   };
+
 
   return (
     <div className="space-y-5">
@@ -256,7 +260,11 @@ function CustomersPage() {
               <Field label="Category" name="category" placeholder="Industrial / Medical" defaultValue={editing?.category} />
             </div>
             <Field label="Address" name="address" defaultValue={editing?.address} />
-            <Field label="Opening Due (Rs)" name="opening_due" type="number" defaultValue={editing?.opening_due ?? 0} />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Opening Due (Rs)" name="opening_due" type="number" defaultValue={editing?.opening_due ?? 0} />
+              <Field label="Karaya / Cylinder (Rs)" name="karaya_per_cylinder" type="number" defaultValue={editing?.karaya_per_cylinder ?? 0} placeholder="Flat rent per cylinder" />
+            </div>
+
 
             <div className="rounded-lg border p-3 space-y-2">
               <div className="flex items-center justify-between">

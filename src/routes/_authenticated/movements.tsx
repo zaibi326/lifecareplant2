@@ -415,6 +415,20 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
   const priceFor = (gid: string, sid: string) =>
     Number((custPrices ?? []).find((p: any) => p.gas_type_id === gid && p.cylinder_size_id === sid)?.price ?? 0);
 
+  const { data: customerRow } = useQuery({
+    queryKey: ["customer-karaya", customer],
+    enabled: !!customer,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("customers")
+        .select("karaya_per_cylinder")
+        .eq("id", customer)
+        .maybeSingle();
+      return data;
+    },
+  });
+  const karayaRate = Number((customerRow as any)?.karaya_per_cylinder ?? 0);
+
   // Auto-fill line rate from customer_prices when a matching price exists and rate is empty.
   useEffect(() => {
     if (type !== "deliver" || !customer || !custPrices) return;
@@ -429,12 +443,11 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customer, custPrices]);
 
-  const cylinderKaraya = type === "deliver"
-    ? lines.reduce((a, l) => a + Number(l.quantity || 0) * priceFor(l.gas_type_id, l.cylinder_size_id), 0)
-    : 0;
   const cylinderQtyTotal = type === "deliver"
     ? lines.reduce((a, l) => a + Number(l.quantity || 0), 0)
     : 0;
+  const cylinderKaraya = type === "deliver" ? cylinderQtyTotal * karayaRate : 0;
+
 
   const selectedVehicle = (lookups?.vehicles ?? []).find((x: any) => x.id === vehicleId);
   const perTripRent = Number(selectedVehicle?.per_trip_rent ?? 0);
@@ -678,11 +691,20 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
           </div>
         ))}
         {type === "deliver" && lines.length > 0 && (
-          <div className="flex items-center justify-between border-t pt-2 mt-2">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">Cylinders Total</span>
-            <span className="font-semibold">{formatCurrency(linesTotal)}</span>
-          </div>
+          <>
+            <div className="flex items-center justify-between border-t pt-2 mt-2">
+              <span className="text-xs uppercase tracking-wider text-muted-foreground">Cylinders Total</span>
+              <span className="font-semibold">{formatCurrency(linesTotal)}</span>
+            </div>
+            {cylinderQtyTotal > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Karaya ({cylinderQtyTotal} × {formatCurrency(karayaRate)})</span>
+                <span className="font-semibold">{formatCurrency(cylinderKaraya)}</span>
+              </div>
+            )}
+          </>
         )}
+
       </div>
 
       {type === "deliver" && (
@@ -887,17 +909,21 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
               <Input type="number" min={0} value={misc} onChange={(e) => setMisc(e.target.value === "" ? "" : Number(e.target.value))} className="h-9 text-xs" />
             </div>
           </div>
-          {(cylinderKaraya > 0 || cylinderQtyTotal > 0) && (
+          {cylinderQtyTotal > 0 && (
             <div className="flex items-center justify-between text-xs bg-muted/40 rounded px-2 py-1.5">
-              <span className="text-muted-foreground">Cylinder Karaya <span className="text-[10px]">({cylinderQtyTotal} cyl × customer price)</span></span>
+              <span className="text-muted-foreground">Cylinder Karaya <span className="text-[10px]">({cylinderQtyTotal} cyl × {formatCurrency(karayaRate)})</span></span>
               <span className="font-semibold">{formatCurrency(cylinderKaraya)}</span>
             </div>
+          )}
+          {customer && karayaRate === 0 && cylinderQtyTotal > 0 && (
+            <p className="text-[10px] text-warning">Is customer ka karaya set nahi — Customers page → edit karke set karein.</p>
           )}
           <div className="flex items-center justify-between border-t pt-2">
             <span className="text-xs uppercase tracking-wider text-muted-foreground">Total Delivery Expense</span>
             <span className="font-semibold">{formatCurrency(deliveryExpenseTotal)}</span>
           </div>
-          <p className="text-[10px] text-muted-foreground">Vehicle rent + cylinder karaya (customer price × qty) + manual — auto-posted to Expenses on save.</p>
+          <p className="text-[10px] text-muted-foreground">Vehicle rent + cylinder karaya (customer flat rate × qty) + manual — auto-posted to Expenses on save.</p>
+
         </div>
       )}
 
