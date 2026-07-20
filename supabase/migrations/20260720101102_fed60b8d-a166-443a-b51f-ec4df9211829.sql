@@ -1,0 +1,1 @@
+ALTER TABLE public.delivery_expenses ADD COLUMN IF NOT EXISTS cylinder_karaya numeric NOT NULL DEFAULT 0;

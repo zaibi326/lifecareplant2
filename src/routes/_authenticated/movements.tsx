@@ -401,10 +401,45 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
     : 0;
   const grandTotal = linesTotal + extrasTotal;
 
+  const { data: custPrices } = useQuery({
+    queryKey: ["customer-prices", customer],
+    enabled: !!customer,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("customer_prices")
+        .select("gas_type_id,cylinder_size_id,price")
+        .eq("customer_id", customer);
+      return data ?? [];
+    },
+  });
+  const priceFor = (gid: string, sid: string) =>
+    Number((custPrices ?? []).find((p: any) => p.gas_type_id === gid && p.cylinder_size_id === sid)?.price ?? 0);
+
+  // Auto-fill line rate from customer_prices when a matching price exists and rate is empty.
+  useEffect(() => {
+    if (type !== "deliver" || !customer || !custPrices) return;
+    setLines((rows) =>
+      rows.map((r) => {
+        if (!r.gas_type_id || !r.cylinder_size_id) return r;
+        if (Number(r.rate) > 0) return r;
+        const p = priceFor(r.gas_type_id, r.cylinder_size_id);
+        return p > 0 ? { ...r, rate: p } : r;
+      }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customer, custPrices]);
+
+  const cylinderKaraya = type === "deliver"
+    ? lines.reduce((a, l) => a + Number(l.quantity || 0) * priceFor(l.gas_type_id, l.cylinder_size_id), 0)
+    : 0;
+  const cylinderQtyTotal = type === "deliver"
+    ? lines.reduce((a, l) => a + Number(l.quantity || 0), 0)
+    : 0;
+
   const selectedVehicle = (lookups?.vehicles ?? []).find((x: any) => x.id === vehicleId);
   const perTripRent = Number(selectedVehicle?.per_trip_rent ?? 0);
   const deliveryExpenseTotal =
-    perTripRent + (Number(fuel) || 0) + (Number(labour) || 0) + (Number(loadingExp) || 0) + (Number(tollTax) || 0) + (Number(misc) || 0);
+    perTripRent + cylinderKaraya + (Number(fuel) || 0) + (Number(labour) || 0) + (Number(loadingExp) || 0) + (Number(tollTax) || 0) + (Number(misc) || 0);
 
   useEffect(() => {
     if (vehicleId && vehicleId !== "none") {
@@ -534,19 +569,26 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
       // Auto delivery expense: per-trip rent + manual expenses → delivery_expenses + expenses.
       if (type === "deliver" && (deliveryExpenseTotal > 0)) {
         const invNo = (payloads[0] as any)?.invoice_number ?? null;
+        const deNotes = [
+          `Delivery ${invNo ?? ""}`,
+          vehicle_number ? `Vehicle ${vehicle_number}` : null,
+          cylinderQtyTotal > 0 ? `${cylinderQtyTotal} cyl` : null,
+          cylinderKaraya > 0 ? `Karaya ${cylinderKaraya.toFixed(0)}` : null,
+        ].filter(Boolean).join(" • ");
         const { error: deErr } = await supabase.from("delivery_expenses").insert({
           date,
           invoice_number: invNo,
           vehicle_id,
           driver_id,
           vehicle_rent: perTripRent,
+          cylinder_karaya: cylinderKaraya,
           fuel: Number(fuel) || 0,
           labour: Number(labour) || 0,
           loading: Number(loadingExp) || 0,
           toll_tax: Number(tollTax) || 0,
           miscellaneous: Number(misc) || 0,
           total: deliveryExpenseTotal,
-          notes: vehicle_number ? `Delivery ${invNo ?? ""} • ${vehicle_number}` : `Delivery ${invNo ?? ""}`,
+          notes: deNotes,
         });
         if (deErr) throw deErr;
         await supabase.from("expenses").insert({
@@ -555,7 +597,7 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
           amount: deliveryExpenseTotal,
           payee: driver_name,
           reference_number: invNo,
-          notes: `Auto delivery expense${vehicle_number ? ` • ${vehicle_number}` : ""}`,
+          notes: `Auto delivery expense${vehicle_number ? ` • ${vehicle_number}` : ""}${cylinderKaraya > 0 ? ` • Karaya ${cylinderKaraya.toFixed(0)}` : ""}`,
         });
       }
       return { queued: false };
@@ -845,11 +887,17 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
               <Input type="number" min={0} value={misc} onChange={(e) => setMisc(e.target.value === "" ? "" : Number(e.target.value))} className="h-9 text-xs" />
             </div>
           </div>
+          {(cylinderKaraya > 0 || cylinderQtyTotal > 0) && (
+            <div className="flex items-center justify-between text-xs bg-muted/40 rounded px-2 py-1.5">
+              <span className="text-muted-foreground">Cylinder Karaya <span className="text-[10px]">({cylinderQtyTotal} cyl × customer price)</span></span>
+              <span className="font-semibold">{formatCurrency(cylinderKaraya)}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between border-t pt-2">
             <span className="text-xs uppercase tracking-wider text-muted-foreground">Total Delivery Expense</span>
             <span className="font-semibold">{formatCurrency(deliveryExpenseTotal)}</span>
           </div>
-          <p className="text-[10px] text-muted-foreground">Automatically posted to the Expense module on save.</p>
+          <p className="text-[10px] text-muted-foreground">Vehicle rent + cylinder karaya (customer price × qty) + manual — auto-posted to Expenses on save.</p>
         </div>
       )}
 
