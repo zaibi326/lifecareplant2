@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { formatM3 } from "@/lib/bulk-gas";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
-import { ArrowDownToLine, ArrowUpFromLine, Wallet, Factory, Download } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, Wallet, Factory, Download, PackagePlus, Receipt, TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({ meta: [{ title: "Reports — Life Care Plant" }] }),
@@ -24,18 +25,28 @@ function ReportsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["reports", from, to],
     queryFn: async () => {
-      const [m, p, prod] = await Promise.all([
+      const [m, p, prod, pur, exp] = await Promise.all([
         supabase.from("cylinder_movements").select("type,quantity,total_amount,date,customer_id,customers(name)").gte("date", from).lte("date", to),
         supabase.from("payments").select("amount,date,customer_id,customers(name)").gte("date", from).lte("date", to),
         supabase.from("production").select("quantity,date").gte("date", from).lte("date", to),
+        supabase.from("gas_purchases").select("total_amount,cubic_meter,date,suppliers(name),gas_types(name)").gte("date", from).lte("date", to),
+        supabase.from("expenses").select("amount,category,date,payee").gte("date", from).lte("date", to),
       ]);
-      return { movements: m.data ?? [], payments: p.data ?? [], production: prod.data ?? [] };
+      return {
+        movements: m.data ?? [],
+        payments: p.data ?? [],
+        production: prod.data ?? [],
+        purchases: pur.data ?? [],
+        expenses: exp.data ?? [],
+      };
     },
   });
 
   const ms: any[] = data?.movements ?? [];
   const ps: any[] = data?.payments ?? [];
   const pr: any[] = data?.production ?? [];
+  const pur: any[] = data?.purchases ?? [];
+  const exp: any[] = data?.expenses ?? [];
 
   const totals = useMemo(() => {
     const received = ms.filter((m) => m.type === "receive").reduce((a, b) => a + Number(b.quantity ?? 0), 0);
@@ -43,8 +54,19 @@ function ReportsPage() {
     const billed = ms.filter((m) => m.type === "deliver").reduce((a, b) => a + Number(b.total_amount ?? 0), 0);
     const collected = ps.reduce((a, b) => a + Number(b.amount ?? 0), 0);
     const produced = pr.reduce((a, b) => a + Number(b.quantity ?? 0), 0);
-    return { received, delivered, billed, collected, produced };
-  }, [ms, ps, pr]);
+    const purchased = pur.reduce((a, b) => a + Number(b.total_amount ?? 0), 0);
+    const purchasedM3 = pur.reduce((a, b) => a + Number(b.cubic_meter ?? 0), 0);
+    const expensed = exp.reduce((a, b) => a + Number(b.amount ?? 0), 0);
+    // Profit/Loss = revenue billed − cost of gas purchased − operating expenses
+    const profit = billed - purchased - expensed;
+    return { received, delivered, billed, collected, produced, purchased, purchasedM3, expensed, profit };
+  }, [ms, ps, pr, pur, exp]);
+
+  const expenseBreakdown = useMemo(() => {
+    const map = new Map<string, number>();
+    exp.forEach((e) => map.set(e.category, (map.get(e.category) ?? 0) + Number(e.amount ?? 0)));
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [exp]);
 
   const dailySeries = useMemo(() => {
     const map = new Map<string, { day: string; Received: number; Delivered: number }>();
@@ -82,11 +104,24 @@ function ReportsPage() {
 
   const exportCsv = () => {
     const rows = [
+      ["FINANCIAL SUMMARY", `${from} to ${to}`],
+      ["Revenue (Billed)", totals.billed],
+      ["Collected", totals.collected],
+      ["Gas Purchases (Cost)", totals.purchased],
+      ["Operating Expenses", totals.expensed],
+      ["Net Profit / Loss", totals.profit],
+      [],
       ["Date", "Type", "Customer", "Quantity", "Amount"],
       ...ms.map((m: any) => [m.date, m.type, m.customers?.name ?? "", m.quantity, m.total_amount ?? ""]),
       [],
       ["Date", "Payment", "Customer", "Amount"],
       ...ps.map((p: any) => [p.date, "payment", p.customers?.name ?? "", p.amount]),
+      [],
+      ["Date", "Gas Purchase", "Supplier", "Gas", "Cubic Meter", "Amount"],
+      ...pur.map((p: any) => [p.date, "purchase", p.suppliers?.name ?? "", p.gas_types?.name ?? "", p.cubic_meter ?? "", p.total_amount ?? ""]),
+      [],
+      ["Date", "Expense", "Category", "Payee", "Amount"],
+      ...exp.map((e: any) => [e.date, "expense", e.category ?? "", e.payee ?? "", e.amount ?? ""]),
     ];
     const csv = rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -140,6 +175,20 @@ function ReportsPage() {
         <Kpi icon={Wallet} label="Collected" value={formatCurrency(totals.collected)} tone="success" />
       </section>
 
+      {/* Profit & Loss */}
+      <Card className="p-5">
+        <h2 className="font-display font-bold text-lg mb-4 flex items-center gap-2"><TrendingUp className="size-5 text-brand" /> Profit &amp; Loss</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <PLBox icon={Wallet} label="Revenue (Billed)" value={totals.billed} tone="success" />
+          <PLBox icon={PackagePlus} label="Gas Purchases" value={-totals.purchased} sub={formatM3(totals.purchasedM3)} tone="brand" />
+          <PLBox icon={Receipt} label="Expenses" value={-totals.expensed} tone="warn" />
+          <PLBox icon={TrendingUp} label="Net Profit / Loss" value={totals.profit} tone={totals.profit >= 0 ? "success" : "destructive"} strong />
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-3">
+          Net = Billed revenue − Gas purchases − Operating expenses for the selected period. Collected ({formatCurrency(totals.collected)}) is cash actually received.
+        </p>
+      </Card>
+
       <Card className="p-4">
         <h2 className="font-display font-bold text-lg mb-3">Daily Movements</h2>
         <div className="h-64">
@@ -156,6 +205,20 @@ function ReportsPage() {
           </ResponsiveContainer>
         </div>
       </Card>
+
+      {expenseBreakdown.length > 0 && (
+        <Card className="p-4">
+          <h2 className="font-display font-bold text-lg mb-3">Expenses by Category</h2>
+          <div className="divide-y">
+            {expenseBreakdown.map(([cat, amt]) => (
+              <div key={cat} className="py-2.5 flex items-center justify-between">
+                <span className="text-sm font-medium">{cat}</span>
+                <span className="font-display font-bold">{formatCurrency(amt)}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Card className="p-4">
         <h2 className="font-display font-bold text-lg mb-3">Top Customers</h2>
@@ -176,6 +239,21 @@ function ReportsPage() {
           ))}
         </div>
       </Card>
+    </div>
+  );
+}
+
+function PLBox({ icon: Icon, label, value, sub, tone, strong }: any) {
+  const cls =
+    tone === "success" ? "text-success" : tone === "warn" ? "text-warning" : tone === "brand" ? "text-brand" : tone === "destructive" ? "text-destructive" : "text-foreground";
+  return (
+    <div className={`rounded-xl border p-3 ${strong ? "bg-muted/30" : ""}`}>
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Icon className="size-4" />
+        <span className="text-[10px] uppercase tracking-wider">{label}</span>
+      </div>
+      <div className={`font-display font-bold text-lg mt-1 ${cls}`}>{formatCurrency(value)}</div>
+      {sub && <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>}
     </div>
   );
 }

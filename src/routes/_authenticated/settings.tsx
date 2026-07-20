@@ -254,8 +254,12 @@ function CompanyForm() {
       invoice_prefix: String(f.get("invoice_prefix") ?? "").trim() || null,
       invoice_footer: String(f.get("invoice_footer") ?? "").trim() || null,
       tax_percent: Number(f.get("tax_percent") ?? 0),
+      oxygen_conversion_factor: Number(f.get("oxygen_conversion_factor") ?? 0.7383) || 0.7383,
+      total_owned_cylinders: Number(f.get("total_owned_cylinders") ?? 0) || 0,
     });
+
   };
+
 
   return (
     <Card className="p-5">
@@ -277,7 +281,36 @@ function CompanyForm() {
           <Label className="text-xs">Invoice Footer</Label>
           <Textarea name="invoice_footer" defaultValue={data?.invoice_footer ?? ""} rows={2} className="mt-1.5" />
         </div>
+        <div className="rounded-lg border p-4 bg-muted/20 space-y-1.5">
+          <Label className="text-xs font-semibold">Oxygen KG → Cubic Meter Conversion Factor</Label>
+          <Input
+            name="oxygen_conversion_factor"
+            type="number"
+            step="0.0001"
+            defaultValue={String(data?.oxygen_conversion_factor ?? 0.7383)}
+            className="h-11 max-w-[200px]"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Used when Oxygen purchases are entered in KG. Cubic Meter = KG × factor. Default 0.7383.
+          </p>
+        </div>
+        <div className="rounded-lg border p-4 bg-muted/20 space-y-1.5">
+          <Label className="text-xs font-semibold">Total Owned Cylinders (Fleet)</Label>
+          <Input
+            name="total_owned_cylinders"
+            type="number"
+            min="0"
+            step="1"
+            defaultValue={String(data?.total_owned_cylinders ?? 0)}
+            className="h-11 max-w-[200px]"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Total cylinders your plant owns. Used on the Stock page to reconcile Owned = In Plant + With Customers. The difference should always be zero.
+          </p>
+        </div>
         <Button type="submit" disabled={save.isPending} className="h-11">
+
+
           {save.isPending ? "Saving…" : "Save Settings"}
         </Button>
       </form>
@@ -362,6 +395,8 @@ function SizesPanel() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [vol, setVol] = useState("");
+  const [capacity, setCapacity] = useState("");
+  const [capacityUnit, setCapacityUnit] = useState("m3");
 
   const { data } = useQuery({
     queryKey: ["cylinder_sizes"],
@@ -371,14 +406,39 @@ function SizesPanel() {
   const create = useMutation({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("Name required");
-      const { error } = await supabase.from("cylinder_sizes").insert({ name: name.trim(), volume_liters: vol ? Number(vol) : null, active: true });
+      const { error } = await supabase.from("cylinder_sizes").insert({
+        name: name.trim(),
+        volume_liters: vol ? Number(vol) : null,
+        capacity: capacity ? Number(capacity) : null,
+        capacity_unit: capacityUnit,
+        active: true,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Size added");
-      setName(""); setVol("");
+      setName(""); setVol(""); setCapacity("");
       qc.invalidateQueries({ queryKey: ["cylinder_sizes"] });
     },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const updateCapacity = useMutation({
+    mutationFn: async (v: { id: string; capacity: number | null; capacity_unit: string }) => {
+      const { error } = await supabase.from("cylinder_sizes")
+        .update({ capacity: v.capacity, capacity_unit: v.capacity_unit }).eq("id", v.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Capacity updated"); qc.invalidateQueries({ queryKey: ["cylinder_sizes"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const toggle = useMutation({
+    mutationFn: async (s: any) => {
+      const { error } = await supabase.from("cylinder_sizes").update({ active: !s.active }).eq("id", s.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["cylinder_sizes"] }),
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -393,19 +453,53 @@ function SizesPanel() {
 
   return (
     <Card className="p-5 space-y-4">
-      <div className="grid grid-cols-[1fr_120px_auto] gap-2">
-        <Input placeholder="Size (e.g. 47L)" value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
+      <div>
+        <h3 className="font-semibold text-sm">Cylinder Sizes & Gas Capacity</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Capacity is the gas per cylinder (e.g. 9.90 m³). Used to auto-deduct bulk gas on production.</p>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-[1fr_100px_100px_110px_auto] gap-2">
+        <Input placeholder="Name (e.g. 9.90)" value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
         <Input placeholder="Litres" type="number" value={vol} onChange={(e) => setVol(e.target.value)} className="h-11" />
+        <Input placeholder="Capacity" type="number" step="0.01" value={capacity} onChange={(e) => setCapacity(e.target.value)} className="h-11" />
+        <Select value={capacityUnit} onValueChange={setCapacityUnit}>
+          <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="m3">m³</SelectItem>
+            <SelectItem value="cft">CFT</SelectItem>
+            <SelectItem value="litre">Litre</SelectItem>
+            <SelectItem value="kg">KG</SelectItem>
+          </SelectContent>
+        </Select>
         <Button onClick={() => create.mutate()} disabled={create.isPending} className="h-11 gap-2"><Plus className="size-4" /> Add</Button>
       </div>
       <div className="divide-y">
         {(data ?? []).map((s: any) => (
-          <div key={s.id} className="py-3 flex items-center justify-between">
-            <div>
-              <div className="font-semibold">{s.name}</div>
-              <div className="text-xs text-muted-foreground">{s.volume_liters ? `${s.volume_liters} L` : "—"}</div>
+          <div key={s.id} className="py-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="font-semibold flex items-center gap-2">
+                {s.name}
+                {!s.active && <Badge variant="secondary" className="text-[10px]">inactive</Badge>}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {s.capacity != null ? `Capacity ${s.capacity} ${s.capacity_unit ?? "m3"}` : "No capacity set"}
+                {s.volume_liters ? ` • ${s.volume_liters} L` : ""}
+              </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => remove.mutate(s.id)}><Trash2 className="size-4 text-destructive" /></Button>
+            <div className="flex items-center gap-1 shrink-0">
+              <Input
+                type="number"
+                step="0.01"
+                defaultValue={s.capacity ?? ""}
+                placeholder="cap"
+                className="h-9 w-20 text-xs"
+                onBlur={(e) => {
+                  const val = e.target.value === "" ? null : Number(e.target.value);
+                  if (val !== (s.capacity ?? null)) updateCapacity.mutate({ id: s.id, capacity: val, capacity_unit: s.capacity_unit ?? "m3" });
+                }}
+              />
+              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => toggle.mutate(s)}>{s.active ? "Disable" : "Enable"}</Button>
+              <Button variant="ghost" size="icon" className="size-8" onClick={() => remove.mutate(s.id)}><Trash2 className="size-4 text-destructive" /></Button>
+            </div>
           </div>
         ))}
         {(data ?? []).length === 0 && <div className="py-4 text-sm text-muted-foreground">No sizes yet.</div>}
@@ -413,6 +507,7 @@ function SizesPanel() {
     </Card>
   );
 }
+
 
 function PartSizesPanel() {
   const qc = useQueryClient();

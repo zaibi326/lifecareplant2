@@ -6,9 +6,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Package, Truck, Factory, Users, Wrench, Plus, Pencil, Check, X } from "lucide-react";
+import { Package, Truck, Factory, Users, Wrench, Plus, Pencil, Check, X, Fuel, ShieldCheck, AlertTriangle } from "lucide-react";
+
 import { toast } from "sonner";
 import { todayISO } from "@/lib/format";
+import { buildBulkBalances, formatM3 } from "@/lib/bulk-gas";
+
 
 const PART_KINDS = ["valve", "spindle"] as const;
 const DEFAULT_PART_SIZES = ['1"', '1.15"', '1.30"', '1.45"', '2"'];
@@ -24,15 +27,19 @@ function StockPage() {
     queryKey: ["stock"],
     queryFn: async () => {
       const today = todayISO();
-      const [gases, sizes, movements, openings, production, parts, partSizes, customers] = await Promise.all([
+      const [gases, sizes, movements, openings, production, parts, partSizes, customers, purchases, allProduction, settings] = await Promise.all([
         supabase.from("gas_types").select("id,name,color").eq("active", true).order("name"),
         supabase.from("cylinder_sizes").select("id,name").eq("active", true).order("name"),
-        supabase.from("cylinder_movements").select("type,quantity,gas_type_id,cylinder_size_id,date,extras,customer_id"),
+        supabase.from("cylinder_movements").select("type,quantity,gas_type_id,cylinder_size_id,date,extras,customer_id,condition"),
         supabase.from("customer_opening_balances").select("quantity,gas_type_id,cylinder_size_id,condition"),
-        supabase.from("production").select("quantity,date").eq("date", today),
+        supabase.from("production").select("quantity,date,gas_type_id,cylinder_size_id"),
+
         supabase.from("parts_stock").select("*").order("kind").order("size"),
         supabase.from("part_sizes").select("label").eq("active", true).order("sort_order").order("label"),
         supabase.from("customers").select("id,opening_cylinders"),
+        supabase.from("gas_purchases").select("gas_type_id,cubic_meter"),
+        supabase.from("production").select("gas_type_id,gas_consumed"),
+        supabase.from("settings").select("total_owned_cylinders").eq("id", 1).maybeSingle(),
       ]);
       return {
         gases: gases.data ?? [],
@@ -43,7 +50,12 @@ function StockPage() {
         parts: parts.data ?? [],
         partSizes: (partSizes.data ?? []).map((r: any) => String(r.label)),
         customers: customers.data ?? [],
+        purchases: purchases.data ?? [],
+        allProduction: allProduction.data ?? [],
+        totalOwned: Number(settings.data?.total_owned_cylinders ?? 0),
       };
+
+
     },
   });
 
@@ -73,6 +85,13 @@ function StockPage() {
 
   const todayProduction = (data?.production ?? []).reduce((a, p: any) => a + Number(p.quantity ?? 0), 0);
 
+  // Reconciliation: Owned fleet should equal Plant + Customers.
+  const totalOwned = Number(data?.totalOwned ?? 0);
+  const trackedTotal = plantStock + withCustomers;
+  const reconDiff = totalOwned - trackedTotal;
+  const reconConfigured = totalOwned > 0;
+
+
   // Parts used count: each extras row with kind+size = qty pieces delivered
   const partsUsed = new Map<string, number>(); // key: `${kind}::${size}`
   for (const m of ms) {
@@ -101,7 +120,43 @@ function StockPage() {
     return { gas: g, sizes: sizes.filter((s: any) => s.active), totals };
   });
 
+  // Plant condition matrix (Filled / Empty / Unknown) per gas × size.
+  // Model: production adds filled cylinders; receives bring cylinders in by their
+  // recorded condition; delivers send filled cylinders out; production consumes empties.
+  const prod: any[] = data?.production ?? [];
+  const prodBy = (gid: string, sid: string) =>
+    prod.filter((p) => p.gas_type_id === gid && p.cylinder_size_id === sid)
+      .reduce((a, b) => a + Number(b.quantity ?? 0), 0);
+  const plantMatrix = (data?.gases ?? []).map((g: any) => {
+    const rows = (data?.sizes ?? []).map((s: any) => {
+      const recFilled = sumBy((m) => m.type === "receive" && m.gas_type_id === g.id && m.cylinder_size_id === s.id && m.condition === "filled");
+      const recEmpty = sumBy((m) => m.type === "receive" && m.gas_type_id === g.id && m.cylinder_size_id === s.id && m.condition === "empty");
+      const recUnknown = sumBy((m) => m.type === "receive" && m.gas_type_id === g.id && m.cylinder_size_id === s.id && (m.condition === "unknown" || m.condition == null));
+      const delivered = sumBy((m) => m.type === "deliver" && m.gas_type_id === g.id && m.cylinder_size_id === s.id);
+      const produced = prodBy(g.id, s.id);
+      const filled = Math.max(0, produced + recFilled - delivered);
+      const empty = Math.max(0, recEmpty - produced);
+      const unknown = Math.max(0, recUnknown);
+      const total = filled + empty + unknown;
+      return { size: s.name, filled, empty, unknown, total, active: total > 0 };
+    });
+    const totals = rows.reduce((a: any, x: any) => ({ filled: a.filled + x.filled, empty: a.empty + x.empty, unknown: a.unknown + x.unknown, total: a.total + x.total }), { filled: 0, empty: 0, unknown: 0, total: 0 });
+    return { gas: g, rows: rows.filter((r: any) => r.active), totals };
+  }).filter((m: any) => m.totals.total > 0);
+
+  const plantTotals = plantMatrix.reduce((a: any, m: any) => ({ filled: a.filled + m.totals.filled, empty: a.empty + m.totals.empty, unknown: a.unknown + m.totals.unknown, total: a.total + m.totals.total }), { filled: 0, empty: 0, unknown: 0, total: 0 });
+
+  // Bulk gas inventory = purchased − consumed (m³) per gas type
+
+  const bulkBalances = buildBulkBalances(data?.purchases ?? [], data?.allProduction ?? []);
+  const gasInfoById = new Map<string, { name: string; color: string | null }>();
+  for (const g of (data?.gases ?? [])) gasInfoById.set(g.id, { name: g.name, color: g.color });
+  const bulkRows = Array.from(bulkBalances.entries())
+    .map(([id, v]) => ({ id, name: gasInfoById.get(id)?.name ?? "Gas", color: gasInfoById.get(id)?.color ?? null, ...v }))
+    .sort((a, b) => b.remaining - a.remaining);
+
   return (
+
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">Stock Position</h1>
@@ -116,8 +171,93 @@ function StockPage() {
       </section>
 
       <section>
+        {reconConfigured ? (
+          <Card className={`p-4 ${reconDiff === 0 ? "border-success/50 bg-success/5" : "border-destructive/60 bg-destructive/5"}`}>
+            <div className="flex items-center gap-3">
+              <div className={`size-10 rounded-xl grid place-items-center shrink-0 ${reconDiff === 0 ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+                {reconDiff === 0 ? <ShieldCheck className="size-5" /> : <AlertTriangle className="size-5" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-display font-bold">Stock Reconciliation</div>
+                <div className="text-xs text-muted-foreground">
+                  Owned <b>{totalOwned.toLocaleString()}</b> = Plant <b className="text-brand">{plantStock.toLocaleString()}</b> + Customers <b className="text-warning">{withCustomers.toLocaleString()}</b> (tracked {trackedTotal.toLocaleString()})
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Difference</div>
+                <div className={`font-display font-bold text-2xl ${reconDiff === 0 ? "text-success" : "text-destructive"}`}>{reconDiff > 0 ? "+" : ""}{reconDiff.toLocaleString()}</div>
+              </div>
+            </div>
+            {reconDiff !== 0 && (
+              <p className="text-xs text-destructive mt-3">
+                ⚠ Mismatch of {Math.abs(reconDiff).toLocaleString()} cylinders. {reconDiff > 0 ? "Owned count is higher than tracked — some cylinders are unaccounted (missing movements or opening balances)." : "Tracked count exceeds owned fleet — check for duplicate receives or an outdated owned count in Settings."}
+              </p>
+            )}
+          </Card>
+        ) : (
+          <Card className="p-4 text-xs text-muted-foreground flex items-center gap-2">
+            <ShieldCheck className="size-4 shrink-0" />
+            Set your total owned cylinder fleet in <b>Settings → Company</b> to enable stock reconciliation (Owned = Plant + Customers).
+          </Card>
+        )}
+      </section>
+
+      {plantMatrix.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display font-bold text-lg flex items-center gap-2"><Package className="size-5" /> Plant Stock Matrix</h2>
+            <div className="text-xs text-muted-foreground">
+              <span className="text-success font-semibold">{plantTotals.filled}</span> filled •
+              <span className="text-muted-foreground font-semibold"> {plantTotals.empty}</span> empty •
+              <span className="text-warning font-semibold"> {plantTotals.unknown}</span> unknown
+            </div>
+          </div>
+          <div className="grid gap-3">
+            {plantMatrix.map(({ gas, rows, totals }: any) => (
+              <Card key={gas.id} className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="size-9 rounded-xl grid place-items-center text-white font-bold text-sm shrink-0" style={{ background: gas.color || "var(--brand)" }}>
+                    {gas.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="font-display font-bold">{gas.name}</div>
+                  <div className="ml-auto text-[10px] text-muted-foreground uppercase tracking-wider">In-plant {totals.total}</div>
+                </div>
+                <div className="rounded-lg border overflow-hidden">
+                  <div className="grid grid-cols-5 bg-muted/50 text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-3 py-2">
+                    <span>Size</span>
+                    <span className="text-right">Filled</span>
+                    <span className="text-right">Empty</span>
+                    <span className="text-right">Unknown</span>
+                    <span className="text-right">Total</span>
+                  </div>
+                  {rows.map((row: any, i: number) => (
+                    <div key={i} className="grid grid-cols-5 items-center px-3 py-2.5 text-sm border-t">
+                      <span className="font-medium truncate">{row.size}</span>
+                      <span className="text-right font-display font-bold text-success">{row.filled}</span>
+                      <span className="text-right font-display font-bold text-muted-foreground">{row.empty}</span>
+                      <span className="text-right font-display font-bold text-warning">{row.unknown}</span>
+                      <span className="text-right font-display font-bold">{row.total}</span>
+                    </div>
+                  ))}
+                  <div className="grid grid-cols-5 items-center px-3 py-2 text-sm border-t bg-muted/30 font-bold">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</span>
+                    <span className="text-right text-success">{totals.filled}</span>
+                    <span className="text-right text-muted-foreground">{totals.empty}</span>
+                    <span className="text-right text-warning">{totals.unknown}</span>
+                    <span className="text-right">{totals.total}</span>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section>
         <h2 className="font-display font-bold text-lg mb-3">Gas-wise Breakdown</h2>
+
         {isLoading && <Card className="p-6 text-sm text-muted-foreground">Loading…</Card>}
+
         {!isLoading && gasSizeRows.length === 0 && (
           <Card className="p-6 text-sm text-muted-foreground">No gas types configured. Add gas types in Settings.</Card>
         )}
@@ -164,12 +304,45 @@ function StockPage() {
         </div>
       </section>
 
+      <section>
+        <h2 className="font-display font-bold text-lg mb-3 flex items-center gap-2"><Fuel className="size-5" /> Bulk Gas Inventory</h2>
+        {bulkRows.length === 0 ? (
+          <Card className="p-6 text-sm text-muted-foreground">No gas purchases recorded yet. Record purchases to track bulk gas.</Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {bulkRows.map((b) => {
+              const low = b.remaining <= 0;
+              return (
+                <Card key={b.id} className={`p-4 ${low ? "border-destructive/60" : ""}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="size-10 rounded-xl grid place-items-center text-white font-bold text-sm shrink-0" style={{ background: b.color || "var(--brand)" }}>
+                      {b.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-display font-bold truncate">{b.name}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                        In {formatM3(b.purchased)} • Used {formatM3(b.consumed)}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className={`font-display font-bold text-xl ${low ? "text-destructive" : "text-brand"}`}>{formatM3(b.remaining)}</div>
+                      {low && <Badge variant="destructive" className="text-[10px] mt-0.5">Depleted</Badge>}
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
       <PartsStockSection
         parts={data?.parts ?? []}
         partSizes={data?.partSizes?.length ? data.partSizes : DEFAULT_PART_SIZES}
         usedMap={partsUsed}
         onChanged={() => qc.invalidateQueries({ queryKey: ["stock"] })}
       />
+
     </div>
   );
 }

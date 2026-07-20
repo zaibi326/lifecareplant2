@@ -1,13 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowDownToLine, ArrowUpFromLine, Wallet, Printer, Phone, MapPin, Package } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, ArrowDownToLine, ArrowUpFromLine, Wallet, Printer, Phone, MapPin, Package, MessageCircle, Tag, Plus, Trash2 } from "lucide-react";
 import { printHTML } from "@/lib/print";
+import { toast } from "sonner";
+
+
 
 export const Route = createFileRoute("/_authenticated/customers/$customerId")({
   head: () => ({ meta: [{ title: "Customer — Life Care Plant" }] }),
@@ -16,8 +23,10 @@ export const Route = createFileRoute("/_authenticated/customers/$customerId")({
 
 function CustomerProfilePage() {
   const { customerId } = Route.useParams();
+  const [pricesOpen, setPricesOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
+
     queryKey: ["customer-profile", customerId],
     queryFn: async () => {
       const [c, ms, ps, s, ob] = await Promise.all([
@@ -130,6 +139,37 @@ function CustomerProfilePage() {
     `);
   };
 
+  const shareWhatsApp = () => {
+    if (!data?.customer) return;
+    const company = data.settings?.company_name ?? "Life Care Plant";
+    const lines = [
+      `*${company}* — Account Statement`,
+      `Customer: ${data.customer.name}`,
+      "",
+      `Cylinders with you: *${balance.withCust}*`,
+      `Outstanding due: *${formatCurrency(balance.due)}*`,
+    ];
+    const recent = timeline.slice(0, 5);
+    if (recent.length > 0) {
+      lines.push("", "Recent activity:");
+      recent.forEach((t) => {
+        const amt = t.amount != null ? ` — ${formatCurrency(t.kind === "payment" ? -t.amount : t.amount)}` : "";
+        lines.push(`• ${formatDate(t.date)} ${t.title}: ${t.sub}${amt}`);
+      });
+    }
+    if (data.settings?.company_phone) lines.push("", `Contact: ${data.settings.company_phone}`);
+    const text = encodeURIComponent(lines.join("\n"));
+    const phoneRaw = String(data.customer.phone ?? "").replace(/[^0-9]/g, "");
+    // Normalise common Pakistani local format (03xx…) to international (92…).
+    let phone = phoneRaw;
+    if (phone.startsWith("0")) phone = "92" + phone.slice(1);
+    const base = phone ? `https://wa.me/${phone}` : "https://wa.me/";
+    const url = `${base}?text=${text}`;
+    if (!phone) toast.info("No phone on file — opening WhatsApp without a recipient.");
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+
   if (isLoading) return <Card className="p-6 text-sm text-muted-foreground">Loading…</Card>;
   if (!data?.customer) return <Card className="p-6 text-sm">Customer not found. <Link to="/customers" className="underline">Back</Link></Card>;
 
@@ -160,8 +200,10 @@ function CustomerProfilePage() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
         <Link to="/movements" search={{ type: "receive" }}>
+
+
           <Button variant="outline" className="w-full h-14 flex-col gap-0.5 border-brand/30 hover:bg-brand/5 hover:border-brand/60">
             <ArrowDownToLine className="size-4 text-brand" />
             <span className="text-xs font-semibold">Receive</span>
@@ -183,7 +225,19 @@ function CustomerProfilePage() {
           <Printer className="size-4" />
           <span className="text-xs font-semibold">Statement</span>
         </Button>
+        <Button onClick={shareWhatsApp} variant="outline" className="h-14 flex-col gap-0.5 border-success/40 text-success hover:bg-success/5 hover:text-success">
+          <MessageCircle className="size-4" />
+          <span className="text-xs font-semibold">WhatsApp</span>
+        </Button>
+        <Button onClick={() => setPricesOpen(true)} variant="outline" className="h-14 flex-col gap-0.5">
+          <Tag className="size-4" />
+          <span className="text-xs font-semibold">Prices</span>
+        </Button>
       </div>
+
+      <PriceListDialog customerId={customerId} customerName={c.name} open={pricesOpen} onOpenChange={setPricesOpen} />
+
+
 
       <Card className="overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
@@ -306,3 +360,120 @@ function Mini({ icon: Icon, label, value, warn }: any) {
     </div>
   );
 }
+
+function PriceListDialog({ customerId, customerName, open, onOpenChange }: {
+  customerId: string; customerName: string; open: boolean; onOpenChange: (v: boolean) => void;
+}) {
+  const qc = useQueryClient();
+  const [gasId, setGasId] = useState("");
+  const [sizeId, setSizeId] = useState("");
+  const [rate, setRate] = useState("");
+
+  const { data } = useQuery({
+    queryKey: ["customer-prices", customerId],
+    enabled: open,
+    queryFn: async () => {
+      const [prices, gases, sizes] = await Promise.all([
+        supabase.from("customer_prices").select("*,gas_types(name,color),cylinder_sizes(name)").eq("customer_id", customerId),
+        supabase.from("gas_types").select("id,name,color").eq("active", true).order("name"),
+        supabase.from("cylinder_sizes").select("id,name").eq("active", true).order("name"),
+      ]);
+      return { prices: prices.data ?? [], gases: gases.data ?? [], sizes: sizes.data ?? [] };
+    },
+  });
+
+  const save = useMutation({
+    mutationFn: async () => {
+      if (!gasId || !sizeId || rate === "") throw new Error("Select gas, size and a rate.");
+      const { error } = await supabase.from("customer_prices").upsert(
+        { customer_id: customerId, gas_type_id: gasId, cylinder_size_id: sizeId, rate: Number(rate) },
+        { onConflict: "customer_id,gas_type_id,cylinder_size_id" }
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Price saved");
+      qc.invalidateQueries({ queryKey: ["customer-prices", customerId] });
+      setRate("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("customer_prices").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Price removed");
+      qc.invalidateQueries({ queryKey: ["customer-prices", customerId] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Tag className="size-4" /> Price List — {customerName}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Gas</Label>
+              <Select value={gasId} onValueChange={setGasId}>
+                <SelectTrigger className="mt-1.5 h-10"><SelectValue placeholder="Select gas" /></SelectTrigger>
+                <SelectContent>
+                  {(data?.gases ?? []).map((g: any) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Size</Label>
+              <Select value={sizeId} onValueChange={setSizeId}>
+                <SelectTrigger className="mt-1.5 h-10"><SelectValue placeholder="Select size" /></SelectTrigger>
+                <SelectContent>
+                  {(data?.sizes ?? []).map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Label className="text-xs">Rate (Rs)</Label>
+              <Input type="number" min="0" value={rate} onChange={(e) => setRate(e.target.value)} className="mt-1.5 h-10" placeholder="0" />
+            </div>
+            <Button onClick={() => save.mutate()} disabled={save.isPending} className="h-10 gap-1">
+              <Plus className="size-4" /> Set
+            </Button>
+          </div>
+
+          <div className="border-t pt-3">
+            {(data?.prices ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-3">No custom prices yet. Set special rates above.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                {(data?.prices ?? []).map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between rounded-lg border p-2.5">
+                    <div className="text-sm">
+                      <span className="font-medium">{p.gas_types?.name ?? "Gas"}</span>
+                      <span className="text-muted-foreground"> · {p.cylinder_sizes?.name ?? "Size"}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-display font-bold">{formatCurrency(p.rate)}</span>
+                      <Button variant="ghost" size="icon" className="size-8 text-destructive" onClick={() => del.mutate(p.id)}>
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+

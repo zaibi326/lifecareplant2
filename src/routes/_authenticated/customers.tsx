@@ -374,12 +374,17 @@ function CustomersPage() {
                   {c.address && <span className="hidden sm:flex items-center gap-1 truncate"><MapPin className="size-3" />{c.address}</span>}
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-sm font-bold">{c.balance.out} cyl</div>
-                <Badge variant={c.balance.due > 0 ? "destructive" : "secondary"} className="mt-1 text-[10px]">
-                  {formatCurrency(c.balance.due)}
-                </Badge>
+              <div className="flex items-stretch gap-2 shrink-0">
+                <div className="text-right rounded-lg bg-brand/5 px-2.5 py-1.5 min-w-[64px]">
+                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground">In-Plant</div>
+                  <div className={`font-display font-bold text-base ${c.balance.out > 0 ? "text-brand" : "text-muted-foreground"}`}>{c.balance.out}</div>
+                </div>
+                <div className="text-right rounded-lg bg-warning/5 px-2.5 py-1.5 min-w-[80px]">
+                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Outstanding</div>
+                  <div className={`font-display font-bold text-base ${c.balance.due > 0 ? "text-destructive" : "text-success"}`}>{formatCurrency(c.balance.due)}</div>
+                </div>
               </div>
+
             </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -1,7 +1,9 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, Package, BarChart3, Settings, Plus, LogOut, ArrowDownToLine, ArrowUpFromLine, Wallet, Factory, Flame } from "lucide-react";
+import { LayoutDashboard, Users, Package, BarChart3, Settings, Plus, LogOut, ArrowDownToLine, ArrowUpFromLine, Wallet, Factory, Flame, Truck, PackagePlus, Receipt, Car, UserCog, History, DatabaseBackup } from "lucide-react";
+
+
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -14,10 +16,19 @@ import {
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/customers", label: "Customers", icon: Users },
+  { to: "/suppliers", label: "Suppliers", icon: Truck },
+  { to: "/purchases", label: "Gas Purchases", icon: PackagePlus },
   { to: "/stock", label: "Stock", icon: Package },
+  { to: "/expenses", label: "Expenses", icon: Receipt },
+  { to: "/vehicles", label: "Vehicles", icon: Car },
+  { to: "/employees", label: "Employees", icon: UserCog },
   { to: "/reports", label: "Reports", icon: BarChart3 },
+  { to: "/audit-log", label: "Audit Log", icon: History },
+  { to: "/backup", label: "Backup", icon: DatabaseBackup },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
+
+
 
 const mobileItems = [
   { to: "/dashboard", label: "Home", icon: LayoutDashboard },

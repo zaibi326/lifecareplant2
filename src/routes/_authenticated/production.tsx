@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate, todayISO } from "@/lib/format";
+import { formatM3, gasConsumed } from "@/lib/bulk-gas";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ function ProductionPage() {
   });
 
   const total = (data ?? []).reduce((a, b: any) => a + Number(b.quantity ?? 0), 0);
+  const totalConsumed = (data ?? []).reduce((a, b: any) => a + Number(b.gas_consumed ?? 0), 0);
 
   return (
     <div className="space-y-5">
@@ -42,7 +44,7 @@ function ProductionPage() {
           <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
             <Factory className="size-6" /> Filling Production
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Daily filling output by operator.</p>
+          <p className="text-sm text-muted-foreground mt-1">Daily filling output. Bulk gas auto-deducted per cylinder capacity.</p>
         </div>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
@@ -60,7 +62,10 @@ function ProductionPage() {
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Recent total filled</div>
           <div className="font-display font-bold text-2xl mt-1">{total.toLocaleString()} cyl</div>
         </div>
-        <div className="text-xs text-muted-foreground">{(data ?? []).length} logs</div>
+        <div className="text-right">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Gas consumed</div>
+          <div className="font-display font-bold text-xl mt-1">{formatM3(totalConsumed)}</div>
+        </div>
       </Card>
 
       <div className="space-y-2">
@@ -75,6 +80,7 @@ function ProductionPage() {
               <div className="font-semibold truncate">{p.gas_types?.name ?? "—"} • {p.cylinder_sizes?.name ?? ""}</div>
               <div className="text-xs text-muted-foreground">
                 {formatDate(p.date)}{p.operator_name ? ` • ${p.operator_name}` : ""}
+                {p.gas_consumed ? ` • used ${formatM3(p.gas_consumed)}` : ""}
               </div>
             </div>
             <div className="font-display font-bold text-xl">{p.quantity}</div>
@@ -89,6 +95,7 @@ function ProductionForm({ onDone }: { onDone: () => void }) {
   const qc = useQueryClient();
   const [gas, setGas] = useState("");
   const [size, setSize] = useState("");
+  const [qty, setQty] = useState<number>(0);
   const [date, setDate] = useState(todayISO());
 
   const { data: lookups } = useQuery({
@@ -96,21 +103,30 @@ function ProductionForm({ onDone }: { onDone: () => void }) {
     queryFn: async () => {
       const [g, s] = await Promise.all([
         supabase.from("gas_types").select("id,name").eq("active", true).order("name"),
-        supabase.from("cylinder_sizes").select("id,name").eq("active", true).order("name"),
+        supabase.from("cylinder_sizes").select("id,name,capacity,capacity_unit").eq("active", true).order("name"),
       ]);
       return { gases: g.data ?? [], sizes: s.data ?? [] };
     },
   });
 
+  const selectedSize = (lookups?.sizes ?? []).find((s: any) => s.id === size);
+  const capacity = selectedSize?.capacity ?? null;
+  const capacityUnit = selectedSize?.capacity_unit ?? "m3";
+  // Always store consumption normalised to m³ so bulk inventory maths is consistent.
+  const consumed = gasConsumed(capacity, qty, capacityUnit);
+
+
   const save = useMutation({
     mutationFn: async (f: FormData) => {
-      const qty = Number(f.get("quantity") ?? 0);
       if (!gas || !size) throw new Error("Gas and size required");
       if (!qty || qty <= 0) throw new Error("Quantity must be greater than 0");
       const { error } = await supabase.from("production").insert({
         gas_type_id: gas,
         cylinder_size_id: size,
         quantity: qty,
+        gas_consumed: capacity != null ? consumed : null,
+        consumed_unit: "m3",
+
         date,
         operator_name: String(f.get("operator_name") ?? "").trim() || null,
         remarks: String(f.get("remarks") ?? "").trim() || null,
@@ -118,7 +134,7 @@ function ProductionForm({ onDone }: { onDone: () => void }) {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Production logged");
+      toast.success(capacity != null ? "Production logged — bulk gas deducted" : "Production logged");
       qc.invalidateQueries();
       onDone();
     },
@@ -132,27 +148,38 @@ function ProductionForm({ onDone }: { onDone: () => void }) {
           <Label className="text-xs">Gas*</Label>
           <Select value={gas} onValueChange={setGas}>
             <SelectTrigger className="mt-1.5 h-11"><SelectValue placeholder="Gas" /></SelectTrigger>
-            <SelectContent>{lookups?.gases.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}</SelectContent>
+            <SelectContent>{lookups?.gases.map((g: any) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div>
           <Label className="text-xs">Size*</Label>
           <Select value={size} onValueChange={setSize}>
             <SelectTrigger className="mt-1.5 h-11"><SelectValue placeholder="Size" /></SelectTrigger>
-            <SelectContent>{lookups?.sizes.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+            <SelectContent>{lookups?.sizes.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
           </Select>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-xs">Quantity*</Label>
-          <Input name="quantity" type="number" min={1} required className="mt-1.5 h-11" />
+          <Input name="quantity" type="number" min={1} required value={qty || ""} onChange={(e) => setQty(Number(e.target.value))} className="mt-1.5 h-11" />
         </div>
         <div>
           <Label className="text-xs">Date</Label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1.5 h-11" />
         </div>
       </div>
+
+      {size && (
+        <div className="rounded-lg border p-3 bg-muted/30 text-xs">
+          {capacity != null ? (
+            <>Capacity <b>{capacity} {selectedSize?.capacity_unit ?? "m3"}</b> × {qty || 0} = gas consumed <b>{formatM3(consumed)}</b> (auto-deducted from bulk).</>
+          ) : (
+            <>No capacity set for this size. Set it in <b>Settings → Sizes</b> to auto-deduct bulk gas.</>
+          )}
+        </div>
+      )}
+
       <div>
         <Label className="text-xs">Operator</Label>
         <Input name="operator_name" className="mt-1.5 h-11" />
