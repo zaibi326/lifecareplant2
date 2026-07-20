@@ -415,6 +415,20 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
   const priceFor = (gid: string, sid: string) =>
     Number((custPrices ?? []).find((p: any) => p.gas_type_id === gid && p.cylinder_size_id === sid)?.price ?? 0);
 
+  const { data: customerRow } = useQuery({
+    queryKey: ["customer-karaya", customer],
+    enabled: !!customer,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("customers")
+        .select("karaya_per_cylinder")
+        .eq("id", customer)
+        .maybeSingle();
+      return data;
+    },
+  });
+  const karayaRate = Number((customerRow as any)?.karaya_per_cylinder ?? 0);
+
   // Auto-fill line rate from customer_prices when a matching price exists and rate is empty.
   useEffect(() => {
     if (type !== "deliver" || !customer || !custPrices) return;
@@ -429,12 +443,11 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customer, custPrices]);
 
-  const cylinderKaraya = type === "deliver"
-    ? lines.reduce((a, l) => a + Number(l.quantity || 0) * priceFor(l.gas_type_id, l.cylinder_size_id), 0)
-    : 0;
   const cylinderQtyTotal = type === "deliver"
     ? lines.reduce((a, l) => a + Number(l.quantity || 0), 0)
     : 0;
+  const cylinderKaraya = type === "deliver" ? cylinderQtyTotal * karayaRate : 0;
+
 
   const selectedVehicle = (lookups?.vehicles ?? []).find((x: any) => x.id === vehicleId);
   const perTripRent = Number(selectedVehicle?.per_trip_rent ?? 0);
