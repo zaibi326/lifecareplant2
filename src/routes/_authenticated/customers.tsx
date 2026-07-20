@@ -218,8 +218,10 @@ function CustomersPage() {
       address: String(f.get("address") ?? "").trim() || null,
       category: String(f.get("category") ?? "").trim() || null,
       opening_due: Number(f.get("opening_due") ?? 0),
+      karaya_per_cylinder: Number(f.get("karaya_per_cylinder") ?? 0),
       notes: String(f.get("notes") ?? "").trim() || null,
     });
+
   };
 
   const addRow = () =>
