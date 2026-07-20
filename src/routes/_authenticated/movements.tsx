@@ -900,17 +900,21 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
               <Input type="number" min={0} value={misc} onChange={(e) => setMisc(e.target.value === "" ? "" : Number(e.target.value))} className="h-9 text-xs" />
             </div>
           </div>
-          {(cylinderKaraya > 0 || cylinderQtyTotal > 0) && (
+          {cylinderQtyTotal > 0 && (
             <div className="flex items-center justify-between text-xs bg-muted/40 rounded px-2 py-1.5">
-              <span className="text-muted-foreground">Cylinder Karaya <span className="text-[10px]">({cylinderQtyTotal} cyl × customer price)</span></span>
+              <span className="text-muted-foreground">Cylinder Karaya <span className="text-[10px]">({cylinderQtyTotal} cyl × {formatCurrency(karayaRate)})</span></span>
               <span className="font-semibold">{formatCurrency(cylinderKaraya)}</span>
             </div>
+          )}
+          {customer && karayaRate === 0 && cylinderQtyTotal > 0 && (
+            <p className="text-[10px] text-warning">Is customer ka karaya set nahi — Customers page → edit karke set karein.</p>
           )}
           <div className="flex items-center justify-between border-t pt-2">
             <span className="text-xs uppercase tracking-wider text-muted-foreground">Total Delivery Expense</span>
             <span className="font-semibold">{formatCurrency(deliveryExpenseTotal)}</span>
           </div>
-          <p className="text-[10px] text-muted-foreground">Vehicle rent + cylinder karaya (customer price × qty) + manual — auto-posted to Expenses on save.</p>
+          <p className="text-[10px] text-muted-foreground">Vehicle rent + cylinder karaya (customer flat rate × qty) + manual — auto-posted to Expenses on save.</p>
+
         </div>
       )}
 
