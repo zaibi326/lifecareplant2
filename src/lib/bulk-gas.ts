@@ -55,7 +55,7 @@ export function gasConsumed(
 }
 
 
-export type PurchaseRow = { gas_type_id: string; cubic_meter: number | null };
+export type PurchaseRow = { gas_type_id: string | null; cubic_meter: number | null };
 export type ProductionConsumptionRow = { gas_type_id: string; gas_consumed: number | null };
 
 /**
