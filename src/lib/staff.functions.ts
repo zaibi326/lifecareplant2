@@ -4,7 +4,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 type Role = "admin" | "staff";
 
 async function ensureAdmin(ctx: { supabase: any; userId: string }) {
-  const { data, error } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
+  const { data, error } = await ctx.supabase.rpc("has_role", {
+    _user_id: ctx.userId,
+    _role: "admin",
+  });
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Forbidden: admin only");
 }
@@ -14,7 +17,10 @@ export const listStaff = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await ensureAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: users, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
+    const { data: users, error } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 200,
+    });
     if (error) throw new Error(error.message);
     const { data: roles } = await supabaseAdmin.from("user_roles").select("user_id,role");
     const roleMap = new Map<string, Role>();
@@ -51,7 +57,9 @@ export const createStaff = createServerFn({ method: "POST" })
     const uid = created.user!.id;
     // Trigger inserts default role; override with chosen role
     await supabaseAdmin.from("user_roles").delete().eq("user_id", uid);
-    const { error: rErr } = await supabaseAdmin.from("user_roles").insert({ user_id: uid, role: data.role });
+    const { error: rErr } = await supabaseAdmin
+      .from("user_roles")
+      .insert({ user_id: uid, role: data.role });
     if (rErr) throw new Error(rErr.message);
     return { id: uid };
   });
@@ -67,7 +75,9 @@ export const updateStaffRole = createServerFn({ method: "POST" })
     await ensureAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id);
-    const { error } = await supabaseAdmin.from("user_roles").insert({ user_id: data.user_id, role: data.role });
+    const { error } = await supabaseAdmin
+      .from("user_roles")
+      .insert({ user_id: data.user_id, role: data.role });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -97,7 +107,9 @@ export const resetStaffPassword = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await ensureAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, { password: data.password });
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
+      password: data.password,
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });

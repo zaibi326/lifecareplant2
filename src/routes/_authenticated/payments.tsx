@@ -8,7 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Wallet } from "lucide-react";
@@ -47,10 +53,14 @@ function PaymentsPage() {
         </div>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <Button className="gap-2 bg-success text-success-foreground hover:bg-success/90"><Plus className="size-4" /> New Payment</Button>
+            <Button className="gap-2 bg-success text-success-foreground hover:bg-success/90">
+              <Plus className="size-4" /> New Payment
+            </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-            <SheetHeader><SheetTitle>Record Payment</SheetTitle></SheetHeader>
+            <SheetHeader>
+              <SheetTitle>Record Payment</SheetTitle>
+            </SheetHeader>
             <PaymentForm onDone={() => setOpen(false)} />
           </SheetContent>
         </Sheet>
@@ -58,7 +68,9 @@ function PaymentsPage() {
 
       <Card className="p-4 flex items-center justify-between">
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Recent total</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Recent total
+          </div>
           <div className="font-display font-bold text-2xl mt-1">{formatCurrency(total)}</div>
         </div>
         <div className="text-xs text-muted-foreground">{(data ?? []).length} entries</div>
@@ -66,19 +78,26 @@ function PaymentsPage() {
 
       <div className="space-y-2">
         {isLoading && <Card className="p-6 text-sm text-muted-foreground">Loading…</Card>}
-        {!isLoading && (data ?? []).length === 0 && <Card className="p-8 text-center text-sm text-muted-foreground">No payments yet.</Card>}
+        {!isLoading && (data ?? []).length === 0 && (
+          <Card className="p-8 text-center text-sm text-muted-foreground">No payments yet.</Card>
+        )}
         {(data ?? []).map((p: any) => (
           <Card key={p.id} className="p-4 flex items-center gap-3">
-            <div className="size-10 rounded-lg bg-success/15 text-success grid place-items-center"><Wallet className="size-4" /></div>
+            <div className="size-10 rounded-lg bg-success/15 text-success grid place-items-center">
+              <Wallet className="size-4" />
+            </div>
             <div className="flex-1 min-w-0">
               <div className="font-semibold truncate">{p.customers?.name ?? "—"}</div>
               <div className="text-xs text-muted-foreground">
-                {formatDate(p.date)} • {p.method}{p.reference_number ? ` • Ref ${p.reference_number}` : ""}
+                {formatDate(p.date)} • {p.method}
+                {p.reference_number ? ` • Ref ${p.reference_number}` : ""}
               </div>
             </div>
             <div className="text-right">
               <div className="font-display font-bold">{formatCurrency(p.amount)}</div>
-              <Badge variant="secondary" className="text-[10px] mt-1 capitalize">{p.method}</Badge>
+              <Badge variant="secondary" className="text-[10px] mt-1 capitalize">
+                {p.method}
+              </Badge>
             </div>
           </Card>
         ))}
@@ -95,7 +114,8 @@ function PaymentForm({ onDone }: { onDone: () => void }) {
 
   const { data: customers } = useQuery({
     queryKey: ["customers-mini"],
-    queryFn: async () => (await supabase.from("customers").select("id,name").order("name")).data ?? [],
+    queryFn: async () =>
+      (await supabase.from("customers").select("id,name").order("name")).data ?? [],
   });
 
   const save = useMutation({
@@ -122,12 +142,26 @@ function PaymentForm({ onDone }: { onDone: () => void }) {
   });
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save.mutate(new FormData(e.currentTarget)); }} className="mt-6 space-y-4">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        save.mutate(new FormData(e.currentTarget));
+      }}
+      className="mt-6 space-y-4"
+    >
       <div>
         <Label className="text-xs">Customer*</Label>
         <Select value={customer} onValueChange={setCustomer}>
-          <SelectTrigger className="mt-1.5 h-11"><SelectValue placeholder="Select customer" /></SelectTrigger>
-          <SelectContent>{customers?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+          <SelectTrigger className="mt-1.5 h-11">
+            <SelectValue placeholder="Select customer" />
+          </SelectTrigger>
+          <SelectContent>
+            {customers?.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -137,14 +171,21 @@ function PaymentForm({ onDone }: { onDone: () => void }) {
         </div>
         <div>
           <Label className="text-xs">Date</Label>
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1.5 h-11" />
+          <Input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="mt-1.5 h-11"
+          />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-xs">Method</Label>
           <Select value={method} onValueChange={setMethod}>
-            <SelectTrigger className="mt-1.5 h-11"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="mt-1.5 h-11">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="cash">Cash</SelectItem>
               <SelectItem value="bank">Bank Transfer</SelectItem>
@@ -162,7 +203,11 @@ function PaymentForm({ onDone }: { onDone: () => void }) {
         <Label className="text-xs">Notes</Label>
         <Textarea name="notes" rows={2} className="mt-1.5" />
       </div>
-      <Button type="submit" disabled={save.isPending} className="w-full h-11 bg-success text-success-foreground hover:bg-success/90">
+      <Button
+        type="submit"
+        disabled={save.isPending}
+        className="w-full h-11 bg-success text-success-foreground hover:bg-success/90"
+      >
         {save.isPending ? "Saving…" : "Save Payment"}
       </Button>
     </form>

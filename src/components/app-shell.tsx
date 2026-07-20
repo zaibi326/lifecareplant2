@@ -1,8 +1,29 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, Package, BarChart3, Settings, Plus, LogOut, ArrowDownToLine, ArrowUpFromLine, Wallet, Factory, Flame, Truck, PackagePlus, Receipt, Car, UserCog, History, DatabaseBackup, TrendingUp } from "lucide-react";
-
+import {
+  LayoutDashboard,
+  Users,
+  Package,
+  BarChart3,
+  Settings,
+  Plus,
+  LogOut,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Wallet,
+  Factory,
+  Flame,
+  Truck,
+  PackagePlus,
+  Receipt,
+  Car,
+  UserCog,
+  History,
+  DatabaseBackup,
+  TrendingUp,
+  ArrowRightLeft,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -18,6 +39,9 @@ const navItems = [
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/suppliers", label: "Suppliers", icon: Truck },
   { to: "/purchases", label: "Gas Purchases", icon: PackagePlus },
+  { to: "/local-filling", label: "Local Filling", icon: Flame },
+  { to: "/cylinder-exchange", label: "Cylinder Exchange", icon: ArrowRightLeft },
+  { to: "/cylinder-purchases", label: "New Cylinders", icon: PackagePlus },
   { to: "/stock", label: "Stock", icon: Package },
   { to: "/expenses", label: "Expenses", icon: Receipt },
   { to: "/vehicles", label: "Vehicles", icon: Car },
@@ -30,8 +54,6 @@ const navItems = [
   { to: "/backup", label: "Backup", icon: DatabaseBackup },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
-
-
 
 const mobileItems = [
   { to: "/dashboard", label: "Home", icon: LayoutDashboard },
@@ -67,7 +89,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div>
             <div className="font-display font-bold tracking-tight">Life Care Plant</div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Powered by Braintech Automation</div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Powered by Braintech Automation
+            </div>
           </div>
         </div>
         <nav className="flex-1 p-3 space-y-1">
@@ -79,7 +103,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 key={item.to}
                 to={item.to}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  active ? "bg-brand text-brand-foreground shadow-sm" : "text-foreground hover:bg-muted"
+                  active
+                    ? "bg-brand text-brand-foreground shadow-sm"
+                    : "text-foreground hover:bg-muted"
                 }`}
               >
                 <Icon className="size-4" />
@@ -118,7 +144,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem disabled className="text-xs">{email}</DropdownMenuItem>
+            <DropdownMenuItem disabled className="text-xs">
+              {email}
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
               <Settings className="size-4 mr-2" /> Settings
             </DropdownMenuItem>
@@ -147,10 +175,46 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="w-10 h-1.5 bg-muted rounded-full mx-auto -mt-2 mb-4" />
           <h3 className="font-display text-xl font-bold mb-4">Quick action</h3>
           <div className="grid grid-cols-2 gap-3">
-            <QuickAction icon={ArrowDownToLine} label="Receive" desc="Cylinders from customer" onClick={() => { setFab(false); navigate({ to: "/movements", search: { type: "receive" } as any }); }} className="bg-brand text-brand-foreground" />
-            <QuickAction icon={ArrowUpFromLine} label="Deliver" desc="Cylinders to customer" onClick={() => { setFab(false); navigate({ to: "/movements", search: { type: "deliver" } as any }); }} className="bg-primary text-primary-foreground" />
-            <QuickAction icon={Wallet} label="Payment" desc="Record received amount" onClick={() => { setFab(false); navigate({ to: "/payments" }); }} className="bg-success text-success-foreground" />
-            <QuickAction icon={Factory} label="Production" desc="Log filling output" onClick={() => { setFab(false); navigate({ to: "/production" }); }} className="bg-warning text-warning-foreground" />
+            <QuickAction
+              icon={ArrowDownToLine}
+              label="Receive"
+              desc="Cylinders from customer"
+              onClick={() => {
+                setFab(false);
+                navigate({ to: "/movements", search: { type: "receive" } as any });
+              }}
+              className="bg-brand text-brand-foreground"
+            />
+            <QuickAction
+              icon={ArrowUpFromLine}
+              label="Deliver"
+              desc="Cylinders to customer"
+              onClick={() => {
+                setFab(false);
+                navigate({ to: "/movements", search: { type: "deliver" } as any });
+              }}
+              className="bg-primary text-primary-foreground"
+            />
+            <QuickAction
+              icon={Wallet}
+              label="Payment"
+              desc="Record received amount"
+              onClick={() => {
+                setFab(false);
+                navigate({ to: "/payments" });
+              }}
+              className="bg-success text-success-foreground"
+            />
+            <QuickAction
+              icon={Factory}
+              label="Production"
+              desc="Log filling output"
+              onClick={() => {
+                setFab(false);
+                navigate({ to: "/production" });
+              }}
+              className="bg-warning text-warning-foreground"
+            />
           </div>
         </SheetContent>
       </Sheet>

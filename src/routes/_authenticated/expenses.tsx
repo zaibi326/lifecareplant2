@@ -8,18 +8,43 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Plus, Receipt, MoreVertical, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-const CATEGORIES = ["Electricity", "Diesel", "Labour", "Repairs", "Vehicle", "Office", "Miscellaneous"] as const;
+const CATEGORIES = [
+  "Electricity",
+  "Diesel",
+  "Labour",
+  "Repairs",
+  "Vehicle",
+  "Office",
+  "Miscellaneous",
+] as const;
 
 export const Route = createFileRoute("/_authenticated/expenses")({
   head: () => ({ meta: [{ title: "Expenses — Life Care Plant" }] }),
@@ -48,7 +73,9 @@ function ExpensesPage() {
 
   const byCategory = useMemo(() => {
     const map = new Map<string, number>();
-    (data ?? []).forEach((e: any) => map.set(e.category, (map.get(e.category) ?? 0) + Number(e.amount ?? 0)));
+    (data ?? []).forEach((e: any) =>
+      map.set(e.category, (map.get(e.category) ?? 0) + Number(e.amount ?? 0)),
+    );
     return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
   }, [data]);
 
@@ -62,7 +89,10 @@ function ExpensesPage() {
       qc.invalidateQueries();
       setDeleteId(null);
     },
-    onError: (e: any) => { toast.error(e.message); setDeleteId(null); },
+    onError: (e: any) => {
+      toast.error(e.message);
+      setDeleteId(null);
+    },
   });
 
   return (
@@ -72,14 +102,20 @@ function ExpensesPage() {
           <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
             <Receipt className="size-6" /> Expenses
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Operating costs: electricity, diesel, labour and more.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Operating costs: electricity, diesel, labour and more.
+          </p>
         </div>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <Button className="gap-2"><Plus className="size-4" /> New Expense</Button>
+            <Button className="gap-2">
+              <Plus className="size-4" /> New Expense
+            </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-            <SheetHeader><SheetTitle>Record Expense</SheetTitle></SheetHeader>
+            <SheetHeader>
+              <SheetTitle>Record Expense</SheetTitle>
+            </SheetHeader>
             <ExpenseForm onDone={() => setOpen(false)} />
           </SheetContent>
         </Sheet>
@@ -87,7 +123,9 @@ function ExpensesPage() {
 
       <Card className="p-4 flex items-center justify-between">
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Recent total</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Recent total
+          </div>
           <div className="font-display font-bold text-2xl mt-1">{formatCurrency(total)}</div>
         </div>
         <div className="text-xs text-muted-foreground">{(data ?? []).length} entries</div>
@@ -96,30 +134,46 @@ function ExpensesPage() {
       {byCategory.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {byCategory.map(([cat, amt]) => (
-            <Badge key={cat} variant="secondary" className="text-[11px]">{cat}: {formatCurrency(amt)}</Badge>
+            <Badge key={cat} variant="secondary" className="text-[11px]">
+              {cat}: {formatCurrency(amt)}
+            </Badge>
           ))}
         </div>
       )}
 
       <div className="space-y-2">
         {isLoading && <Card className="p-6 text-sm text-muted-foreground">Loading…</Card>}
-        {!isLoading && (data ?? []).length === 0 && <Card className="p-8 text-center text-sm text-muted-foreground">No expenses yet.</Card>}
+        {!isLoading && (data ?? []).length === 0 && (
+          <Card className="p-8 text-center text-sm text-muted-foreground">No expenses yet.</Card>
+        )}
         {(data ?? []).map((e: any) => (
           <Card key={e.id} className="p-4 flex items-center gap-3">
-            <div className="size-10 rounded-lg bg-destructive/10 text-destructive grid place-items-center"><Receipt className="size-4" /></div>
+            <div className="size-10 rounded-lg bg-destructive/10 text-destructive grid place-items-center">
+              <Receipt className="size-4" />
+            </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold truncate">{e.category}{e.payee ? ` • ${e.payee}` : ""}</div>
+              <div className="font-semibold truncate">
+                {e.category}
+                {e.payee ? ` • ${e.payee}` : ""}
+              </div>
               <div className="text-xs text-muted-foreground">
-                {formatDate(e.date)}{e.reference_number ? ` • Ref ${e.reference_number}` : ""}{e.notes ? ` • ${e.notes}` : ""}
+                {formatDate(e.date)}
+                {e.reference_number ? ` • Ref ${e.reference_number}` : ""}
+                {e.notes ? ` • ${e.notes}` : ""}
               </div>
             </div>
             <div className="font-display font-bold">{formatCurrency(e.amount)}</div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-9 shrink-0"><MoreVertical className="size-4" /></Button>
+                <Button variant="ghost" size="icon" className="size-9 shrink-0">
+                  <MoreVertical className="size-4" />
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setDeleteId(e.id)} className="gap-2 text-destructive focus:text-destructive">
+                <DropdownMenuItem
+                  onClick={() => setDeleteId(e.id)}
+                  className="gap-2 text-destructive focus:text-destructive"
+                >
                   <Trash2 className="size-4" /> Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -136,7 +190,10 @@ function ExpensesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteId && del.mutate(deleteId)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={() => deleteId && del.mutate(deleteId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               {del.isPending ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -174,12 +231,26 @@ function ExpenseForm({ onDone }: { onDone: () => void }) {
   });
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save.mutate(new FormData(e.currentTarget)); }} className="mt-6 space-y-4">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        save.mutate(new FormData(e.currentTarget));
+      }}
+      className="mt-6 space-y-4"
+    >
       <div>
         <Label className="text-xs">Category*</Label>
         <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="mt-1.5 h-11"><SelectValue /></SelectTrigger>
-          <SelectContent>{CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+          <SelectTrigger className="mt-1.5 h-11">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CATEGORIES.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -189,7 +260,12 @@ function ExpenseForm({ onDone }: { onDone: () => void }) {
         </div>
         <div>
           <Label className="text-xs">Date</Label>
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1.5 h-11" />
+          <Input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="mt-1.5 h-11"
+          />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">

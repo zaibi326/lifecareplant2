@@ -8,7 +8,15 @@ import { computePnl, answerOwnerQuery, type AssistantContext } from "@/lib/pnl";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, Sparkles, Send, Wallet, Receipt, PackagePlus } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Sparkles,
+  Send,
+  Wallet,
+  Receipt,
+  PackagePlus,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/profit")({
   head: () => ({ meta: [{ title: "Profit & Loss — Life Care Plant" }] }),
@@ -28,17 +36,27 @@ function ProfitPage() {
   const { data } = useQuery({
     queryKey: ["pnl-data"],
     queryFn: async () => {
-      const [deliveries, purchases, expenses, delExp, customers, allPays, gases, sizes, prod] = await Promise.all([
-        supabase.from("cylinder_movements").select("date,total_amount,rate,quantity,type,gas_type_id,cylinder_size_id,condition,customer_id").eq("type", "deliver").gte("date", yearStart),
-        supabase.from("gas_purchases").select("date,total_amount,gas_type_id,cubic_meter").gte("date", yearStart),
-        supabase.from("expenses").select("date,amount,category").gte("date", yearStart),
-        supabase.from("delivery_expenses").select("date,total,vehicle_id").gte("date", yearStart),
-        supabase.from("customers").select("id,name,opening_due"),
-        supabase.from("payments").select("amount"),
-        supabase.from("gas_types").select("id,name"),
-        supabase.from("cylinder_sizes").select("id,name"),
-        supabase.from("production").select("gas_type_id,gas_consumed"),
-      ]);
+      const [deliveries, purchases, expenses, delExp, customers, allPays, gases, sizes, prod] =
+        await Promise.all([
+          supabase
+            .from("cylinder_movements")
+            .select(
+              "date,total_amount,rate,quantity,type,gas_type_id,cylinder_size_id,condition,customer_id",
+            )
+            .eq("type", "deliver")
+            .gte("date", yearStart),
+          supabase
+            .from("gas_purchases")
+            .select("date,total_amount,gas_type_id,cubic_meter")
+            .gte("date", yearStart),
+          supabase.from("expenses").select("date,amount,category").gte("date", yearStart),
+          supabase.from("delivery_expenses").select("date,total,vehicle_id").gte("date", yearStart),
+          supabase.from("customers").select("id,name,opening_due"),
+          supabase.from("payments").select("amount"),
+          supabase.from("gas_types").select("id,name"),
+          supabase.from("cylinder_sizes").select("id,name"),
+          supabase.from("production").select("gas_type_id,gas_consumed"),
+        ]);
       return {
         deliveries: deliveries.data ?? [],
         purchases: purchases.data ?? [],
@@ -75,10 +93,16 @@ function ProfitPage() {
     (d?.sizes ?? []).forEach((s: any) => sizeName.set(s.id, s.name));
 
     const bulk = buildBulkBalances(
-      (d?.purchases ?? []).map((p: any) => ({ gas_type_id: p.gas_type_id, cubic_meter: p.cubic_meter })),
+      (d?.purchases ?? []).map((p: any) => ({
+        gas_type_id: p.gas_type_id,
+        cubic_meter: p.cubic_meter,
+      })),
       (d?.prod ?? []) as any,
     );
-    const bulkByGas = Array.from(bulk.entries()).map(([id, v]) => ({ name: gasName.get(id) ?? "Gas", remaining: v.remaining }));
+    const bulkByGas = Array.from(bulk.entries()).map(([id, v]) => ({
+      name: gasName.get(id) ?? "Gas",
+      remaining: v.remaining,
+    }));
 
     // Filled cylinders per gas+size = net delivered filled − received (proxy for what's out)
     const fillMap = new Map<string, number>();
@@ -93,18 +117,24 @@ function ProfitPage() {
 
     // Top debtor (gross billed + opening − payments not netted per-customer; indicative)
     const debtMap = new Map<string, { name: string; due: number }>();
-    (d?.customers ?? []).forEach((c: any) => debtMap.set(c.id, { name: c.name, due: Number(c.opening_due ?? 0) }));
+    (d?.customers ?? []).forEach((c: any) =>
+      debtMap.set(c.id, { name: c.name, due: Number(c.opening_due ?? 0) }),
+    );
     (d?.deliveries ?? []).forEach((m: any) => {
       if (!m.customer_id) return;
       const e = debtMap.get(m.customer_id);
       if (e) e.due += Number(m.total_amount ?? 0);
     });
-    const debtors = Array.from(debtMap.values()).filter((x) => x.due > 0).sort((a, b) => b.due - a.due);
+    const debtors = Array.from(debtMap.values())
+      .filter((x) => x.due > 0)
+      .sort((a, b) => b.due - a.due);
     const outstanding = debtors.reduce((a, x) => a + x.due, 0);
 
     // Best selling gas by delivered qty
     const gasQty = new Map<string, number>();
-    (d?.deliveries ?? []).forEach((m: any) => gasQty.set(m.gas_type_id, (gasQty.get(m.gas_type_id) ?? 0) + Number(m.quantity ?? 0)));
+    (d?.deliveries ?? []).forEach((m: any) =>
+      gasQty.set(m.gas_type_id, (gasQty.get(m.gas_type_id) ?? 0) + Number(m.quantity ?? 0)),
+    );
     const bestEntry = Array.from(gasQty.entries()).sort((a, b) => b[1] - a[1])[0];
 
     return {
@@ -114,7 +144,9 @@ function ProfitPage() {
       monthProfit: monthPnl.netProfit,
       topDebtor: debtors[0] ?? null,
       topVehicleExpense: null,
-      bestSellingGas: bestEntry ? { name: gasName.get(bestEntry[0]) ?? "Gas", qty: bestEntry[1] } : null,
+      bestSellingGas: bestEntry
+        ? { name: gasName.get(bestEntry[0]) ?? "Gas", qty: bestEntry[1] }
+        : null,
       outstanding,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,8 +155,12 @@ function ProfitPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">Profit & Loss</h1>
-        <p className="text-sm text-muted-foreground mt-1">Business performance across today, month, and year to date.</p>
+        <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
+          Profit & Loss
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Business performance across today, month, and year to date.
+        </p>
       </header>
 
       <section className="grid gap-3 md:grid-cols-3">
@@ -140,15 +176,31 @@ function ProfitPage() {
   );
 }
 
-function ProfitCard({ title, pnl, highlight }: { title: string; pnl: ReturnType<typeof computePnl>; highlight?: boolean }) {
+function ProfitCard({
+  title,
+  pnl,
+  highlight,
+}: {
+  title: string;
+  pnl: ReturnType<typeof computePnl>;
+  highlight?: boolean;
+}) {
   const positive = pnl.netProfit >= 0;
   return (
     <Card className={`p-5 ${highlight ? "border-brand/40 bg-brand/5" : ""}`}>
       <div className="flex items-center justify-between">
-        <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{title}</span>
-        {positive ? <TrendingUp className="size-4 text-success" /> : <TrendingDown className="size-4 text-destructive" />}
+        <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+          {title}
+        </span>
+        {positive ? (
+          <TrendingUp className="size-4 text-success" />
+        ) : (
+          <TrendingDown className="size-4 text-destructive" />
+        )}
       </div>
-      <div className={`font-display text-2xl font-bold mt-2 ${positive ? "text-success" : "text-destructive"}`}>
+      <div
+        className={`font-display text-2xl font-bold mt-2 ${positive ? "text-success" : "text-destructive"}`}
+      >
         {formatCurrency(pnl.netProfit)}
       </div>
       <div className="text-[11px] text-muted-foreground mt-1">Net profit</div>
@@ -181,26 +233,52 @@ function PnlBreakdown({ title, pnl }: { title: string; pnl: ReturnType<typeof co
       <h2 className="font-display font-bold mb-4">{title}</h2>
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1"><Wallet className="size-3" /> Income</div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+            <Wallet className="size-3" /> Income
+          </div>
           <div className="space-y-1.5 text-sm">
             <LineItem label="Cylinder & Gas Sales" value={pnl.income.sales} />
             <LineItem label="Rental Income" value={pnl.income.rentalIncome} />
             <LineItem label="Other Income" value={pnl.income.otherIncome} />
-            <div className="flex justify-between font-semibold border-t pt-1.5"><span>Total Income</span><span>{formatCurrency(pnl.income.total)}</span></div>
+            <div className="flex justify-between font-semibold border-t pt-1.5">
+              <span>Total Income</span>
+              <span>{formatCurrency(pnl.income.total)}</span>
+            </div>
           </div>
-          <div className="text-xs uppercase tracking-wider text-muted-foreground mt-4 mb-2 flex items-center gap-1"><PackagePlus className="size-3" /> Purchase Cost</div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mt-4 mb-2 flex items-center gap-1">
+            <PackagePlus className="size-3" /> Purchase Cost
+          </div>
           <LineItem label="Bulk Gas & Cylinder Purchases" value={pnl.purchaseCost} />
         </div>
         <div>
-          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1"><Receipt className="size-3" /> Expenses</div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+            <Receipt className="size-3" /> Expenses
+          </div>
           <div className="space-y-1.5 text-sm">
-            {cats.length === 0 && <p className="text-muted-foreground text-xs">No expenses in this period.</p>}
-            {cats.map(([cat, amt]) => <LineItem key={cat} label={cat} value={amt} />)}
-            <div className="flex justify-between font-semibold border-t pt-1.5"><span>Total Expenses</span><span>{formatCurrency(pnl.expenses.total)}</span></div>
+            {cats.length === 0 && (
+              <p className="text-muted-foreground text-xs">No expenses in this period.</p>
+            )}
+            {cats.map(([cat, amt]) => (
+              <LineItem key={cat} label={cat} value={amt} />
+            ))}
+            <div className="flex justify-between font-semibold border-t pt-1.5">
+              <span>Total Expenses</span>
+              <span>{formatCurrency(pnl.expenses.total)}</span>
+            </div>
           </div>
           <div className="mt-4 rounded-xl bg-muted/40 p-3">
-            <div className="flex justify-between text-sm"><span>Gross Profit</span><span className="font-semibold">{formatCurrency(pnl.grossProfit)}</span></div>
-            <div className="flex justify-between text-sm mt-1"><span>Net Profit</span><span className={`font-display font-bold ${pnl.netProfit >= 0 ? "text-success" : "text-destructive"}`}>{formatCurrency(pnl.netProfit)}</span></div>
+            <div className="flex justify-between text-sm">
+              <span>Gross Profit</span>
+              <span className="font-semibold">{formatCurrency(pnl.grossProfit)}</span>
+            </div>
+            <div className="flex justify-between text-sm mt-1">
+              <span>Net Profit</span>
+              <span
+                className={`font-display font-bold ${pnl.netProfit >= 0 ? "text-success" : "text-destructive"}`}
+              >
+                {formatCurrency(pnl.netProfit)}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -237,19 +315,40 @@ function OwnerAssistant({ ctx }: { ctx: AssistantContext }) {
   return (
     <Card className="p-5">
       <div className="flex items-center gap-2 mb-3">
-        <div className="size-8 rounded-lg bg-brand/10 text-brand grid place-items-center"><Sparkles className="size-4" /></div>
+        <div className="size-8 rounded-lg bg-brand/10 text-brand grid place-items-center">
+          <Sparkles className="size-4" />
+        </div>
         <div>
           <h2 className="font-display font-bold">Owner Assistant</h2>
           <p className="text-xs text-muted-foreground">Ask about stock, profit, or customers</p>
         </div>
       </div>
-      <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="flex gap-2">
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="How much oxygen is remaining?" className="h-11" />
-        <Button type="submit" className="h-11 gap-1"><Send className="size-4" /></Button>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          ask(q);
+        }}
+        className="flex gap-2"
+      >
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="How much oxygen is remaining?"
+          className="h-11"
+        />
+        <Button type="submit" className="h-11 gap-1">
+          <Send className="size-4" />
+        </Button>
       </form>
       <div className="flex flex-wrap gap-1.5 mt-2">
         {suggestions.map((s) => (
-          <button key={s} onClick={() => ask(s)} className="text-[11px] px-2.5 py-1 rounded-full border hover:bg-muted transition-colors">{s}</button>
+          <button
+            key={s}
+            onClick={() => ask(s)}
+            className="text-[11px] px-2.5 py-1 rounded-full border hover:bg-muted transition-colors"
+          >
+            {s}
+          </button>
         ))}
       </div>
       {log.length > 0 && (

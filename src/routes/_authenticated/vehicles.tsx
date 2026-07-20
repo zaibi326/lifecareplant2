@@ -8,13 +8,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
-  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Plus, Search, Phone, Truck, MoreVertical, Pencil, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
@@ -29,10 +46,21 @@ const FUEL_TYPES = ["diesel", "petrol", "cng", "electric", "other"];
 const STATUSES = ["active", "maintenance", "inactive"];
 
 type EditState = {
-  id: string; registration_number: string; type: string; make_model: string;
-  driver_name: string; driver_phone: string; capacity_cylinders: number | ""; notes: string;
-  vehicle_name: string; fuel_type: string; status: string; default_driver_id: string;
-  daily_rent: number | ""; monthly_rent: number | ""; per_trip_rent: number | "";
+  id: string;
+  registration_number: string;
+  type: string;
+  make_model: string;
+  driver_name: string;
+  driver_phone: string;
+  capacity_cylinders: number | "";
+  notes: string;
+  vehicle_name: string;
+  fuel_type: string;
+  status: string;
+  default_driver_id: string;
+  daily_rent: number | "";
+  monthly_rent: number | "";
+  per_trip_rent: number | "";
 } | null;
 
 function VehiclesPage() {
@@ -48,23 +76,27 @@ function VehiclesPage() {
 
   const { data: drivers } = useQuery({
     queryKey: ["drivers-lookup"],
-    queryFn: async () => (await supabase.from("drivers").select("id,name").eq("status", "active").order("name")).data ?? [],
+    queryFn: async () =>
+      (await supabase.from("drivers").select("id,name").eq("status", "active").order("name"))
+        .data ?? [],
   });
-
 
   const { data } = useQuery({
     queryKey: ["vehicles"],
-    queryFn: async () => (await supabase.from("vehicles").select("*").order("registration_number")).data ?? [],
+    queryFn: async () =>
+      (await supabase.from("vehicles").select("*").order("registration_number")).data ?? [],
   });
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     const rows = data ?? [];
     if (!s) return rows;
-    return rows.filter((r: any) =>
-      r.registration_number.toLowerCase().includes(s) ||
-      (r.driver_name ?? "").toLowerCase().includes(s) ||
-      (r.driver_phone ?? "").includes(s));
+    return rows.filter(
+      (r: any) =>
+        r.registration_number.toLowerCase().includes(s) ||
+        (r.driver_name ?? "").toLowerCase().includes(s) ||
+        (r.driver_phone ?? "").includes(s),
+    );
   }, [data, q]);
 
   const save = useMutation({
@@ -72,11 +104,25 @@ function VehiclesPage() {
       if (editing) {
         const { error } = await supabase.from("vehicles").update(vals).eq("id", editing.id);
         if (error) throw error;
-        await logAudit({ action: "update", entity: "vehicles", entityId: editing.id, summary: `Updated vehicle ${vals.registration_number}` });
+        await logAudit({
+          action: "update",
+          entity: "vehicles",
+          entityId: editing.id,
+          summary: `Updated vehicle ${vals.registration_number}`,
+        });
       } else {
-        const { data: ins, error } = await supabase.from("vehicles").insert(vals).select("id").single();
+        const { data: ins, error } = await supabase
+          .from("vehicles")
+          .insert(vals)
+          .select("id")
+          .single();
         if (error) throw error;
-        await logAudit({ action: "create", entity: "vehicles", entityId: ins?.id, summary: `Added vehicle ${vals.registration_number}` });
+        await logAudit({
+          action: "create",
+          entity: "vehicles",
+          entityId: ins?.id,
+          summary: `Added vehicle ${vals.registration_number}`,
+        });
       }
     },
     onSuccess: () => {
@@ -92,14 +138,22 @@ function VehiclesPage() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("vehicles").delete().eq("id", id);
       if (error) throw error;
-      await logAudit({ action: "delete", entity: "vehicles", entityId: id, summary: "Deleted vehicle" });
+      await logAudit({
+        action: "delete",
+        entity: "vehicles",
+        entityId: id,
+        summary: "Deleted vehicle",
+      });
     },
     onSuccess: () => {
       toast.success("Vehicle deleted");
       qc.invalidateQueries({ queryKey: ["vehicles"] });
       setDeleteId(null);
     },
-    onError: (e: any) => { toast.error(e.message); setDeleteId(null); },
+    onError: (e: any) => {
+      toast.error(e.message);
+      setDeleteId(null);
+    },
   });
 
   const num = (v: FormDataEntryValue | null) => {
@@ -130,16 +184,30 @@ function VehiclesPage() {
   };
 
   const openNew = () => {
-    setEditing(null); setType("truck"); setFuelType("diesel"); setStatus("active"); setDefaultDriver("none"); setOpen(true);
+    setEditing(null);
+    setType("truck");
+    setFuelType("diesel");
+    setStatus("active");
+    setDefaultDriver("none");
+    setOpen(true);
   };
   const openEdit = (v: any) => {
     setEditing({
-      id: v.id, registration_number: v.registration_number ?? "", type: v.type ?? "truck",
-      make_model: v.make_model ?? "", driver_name: v.driver_name ?? "", driver_phone: v.driver_phone ?? "",
-      capacity_cylinders: v.capacity_cylinders ?? "", notes: v.notes ?? "",
-      vehicle_name: v.vehicle_name ?? "", fuel_type: v.fuel_type ?? "diesel", status: v.status ?? "active",
+      id: v.id,
+      registration_number: v.registration_number ?? "",
+      type: v.type ?? "truck",
+      make_model: v.make_model ?? "",
+      driver_name: v.driver_name ?? "",
+      driver_phone: v.driver_phone ?? "",
+      capacity_cylinders: v.capacity_cylinders ?? "",
+      notes: v.notes ?? "",
+      vehicle_name: v.vehicle_name ?? "",
+      fuel_type: v.fuel_type ?? "diesel",
+      status: v.status ?? "active",
       default_driver_id: v.default_driver_id ?? "none",
-      daily_rent: v.daily_rent ?? "", monthly_rent: v.monthly_rent ?? "", per_trip_rent: v.per_trip_rent ?? "",
+      daily_rent: v.daily_rent ?? "",
+      monthly_rent: v.monthly_rent ?? "",
+      per_trip_rent: v.per_trip_rent ?? "",
     });
     setType(v.type ?? "truck");
     setFuelType(v.fuel_type ?? "diesel");
@@ -147,7 +215,6 @@ function VehiclesPage() {
     setDefaultDriver(v.default_driver_id ?? "none");
     setOpen(true);
   };
-
 
   return (
     <div className="space-y-5">
@@ -158,24 +225,51 @@ function VehiclesPage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Delivery fleet and assigned drivers.</p>
         </div>
-        <Button onClick={openNew} className="gap-2"><Plus className="size-4" /> New Vehicle</Button>
+        <Button onClick={openNew} className="gap-2">
+          <Plus className="size-4" /> New Vehicle
+        </Button>
       </header>
 
-      <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+      <Sheet
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) setEditing(null);
+        }}
+      >
         <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader><SheetTitle>{editing ? "Edit Vehicle" : "New Vehicle"}</SheetTitle></SheetHeader>
+          <SheetHeader>
+            <SheetTitle>{editing ? "Edit Vehicle" : "New Vehicle"}</SheetTitle>
+          </SheetHeader>
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Registration Number" name="registration_number" required defaultValue={editing?.registration_number} placeholder="LEB-1234" />
-              <Field label="Vehicle Name" name="vehicle_name" defaultValue={editing?.vehicle_name} placeholder="Vehicle A" />
+              <Field
+                label="Registration Number"
+                name="registration_number"
+                required
+                defaultValue={editing?.registration_number}
+                placeholder="LEB-1234"
+              />
+              <Field
+                label="Vehicle Name"
+                name="vehicle_name"
+                defaultValue={editing?.vehicle_name}
+                placeholder="Vehicle A"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Type</Label>
                 <Select value={type} onValueChange={setType}>
-                  <SelectTrigger className="mt-1.5 h-11"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1.5 h-11">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {VEHICLE_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {VEHICLE_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -185,18 +279,30 @@ function VehiclesPage() {
               <div>
                 <Label className="text-xs">Fuel Type</Label>
                 <Select value={fuelType} onValueChange={setFuelType}>
-                  <SelectTrigger className="mt-1.5 h-11"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1.5 h-11">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {FUEL_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {FUEL_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label className="text-xs">Status</Label>
                 <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger className="mt-1.5 h-11"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1.5 h-11">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {STATUSES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {STATUSES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -204,27 +310,68 @@ function VehiclesPage() {
             <div>
               <Label className="text-xs">Default Driver</Label>
               <Select value={defaultDriver} onValueChange={setDefaultDriver}>
-                <SelectTrigger className="mt-1.5 h-11"><SelectValue placeholder="No default driver" /></SelectTrigger>
+                <SelectTrigger className="mt-1.5 h-11">
+                  <SelectValue placeholder="No default driver" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No default driver</SelectItem>
-                  {(drivers ?? []).map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                  {(drivers ?? []).map((d: any) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              <p className="text-[10px] text-muted-foreground mt-1">Manage drivers on the Employees / Drivers page.</p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Manage drivers on the Employees / Drivers page.
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Driver Name (free text)" name="driver_name" defaultValue={editing?.driver_name} />
-              <Field label="Driver Phone" name="driver_phone" defaultValue={editing?.driver_phone} />
+              <Field
+                label="Driver Name (free text)"
+                name="driver_name"
+                defaultValue={editing?.driver_name}
+              />
+              <Field
+                label="Driver Phone"
+                name="driver_phone"
+                defaultValue={editing?.driver_phone}
+              />
             </div>
-            <Field label="Capacity (cylinders)" name="capacity_cylinders" type="number" defaultValue={editing?.capacity_cylinders} />
+            <Field
+              label="Capacity (cylinders)"
+              name="capacity_cylinders"
+              type="number"
+              defaultValue={editing?.capacity_cylinders}
+            />
             <div className="rounded-lg border p-3 space-y-3">
               <Label className="text-xs font-semibold">Rent Configuration</Label>
               <div className="grid grid-cols-3 gap-2">
-                <Field label="Per Trip" name="per_trip_rent" type="number" defaultValue={editing?.per_trip_rent} placeholder="1500" />
-                <Field label="Daily" name="daily_rent" type="number" defaultValue={editing?.daily_rent} placeholder="4000" />
-                <Field label="Monthly" name="monthly_rent" type="number" defaultValue={editing?.monthly_rent} placeholder="90000" />
+                <Field
+                  label="Per Trip"
+                  name="per_trip_rent"
+                  type="number"
+                  defaultValue={editing?.per_trip_rent}
+                  placeholder="1500"
+                />
+                <Field
+                  label="Daily"
+                  name="daily_rent"
+                  type="number"
+                  defaultValue={editing?.daily_rent}
+                  placeholder="4000"
+                />
+                <Field
+                  label="Monthly"
+                  name="monthly_rent"
+                  type="number"
+                  defaultValue={editing?.monthly_rent}
+                  placeholder="90000"
+                />
               </div>
-              <p className="text-[10px] text-muted-foreground">Per-trip rent auto-adds to delivery expense when this vehicle is used.</p>
+              <p className="text-[10px] text-muted-foreground">
+                Per-trip rent auto-adds to delivery expense when this vehicle is used.
+              </p>
             </div>
             <div>
               <Label className="text-xs">Notes</Label>
@@ -240,11 +387,20 @@ function VehiclesPage() {
 
       <div className="relative">
         <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Search by reg no, driver or phone" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9 h-11" />
+        <Input
+          placeholder="Search by reg no, driver or phone"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="pl-9 h-11"
+        />
       </div>
 
       <div className="space-y-2">
-        {filtered.length === 0 && <Card className="p-8 text-center text-sm text-muted-foreground">No vehicles yet. Add your first vehicle.</Card>}
+        {filtered.length === 0 && (
+          <Card className="p-8 text-center text-sm text-muted-foreground">
+            No vehicles yet. Add your first vehicle.
+          </Card>
+        )}
         {filtered.map((v: any) => (
           <Card key={v.id} className="p-4 flex items-center gap-3">
             <div className="size-11 rounded-full bg-brand/10 text-brand grid place-items-center">
@@ -253,27 +409,54 @@ function VehiclesPage() {
             <div className="flex-1 min-w-0">
               <div className="font-semibold truncate flex items-center gap-2">
                 {v.registration_number}
-                {v.type && <Badge variant="secondary" className="text-[10px]">{v.type}</Badge>}
-                {!v.active && <Badge variant="outline" className="text-[10px]">inactive</Badge>}
+                {v.type && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {v.type}
+                  </Badge>
+                )}
+                {!v.active && (
+                  <Badge variant="outline" className="text-[10px]">
+                    inactive
+                  </Badge>
+                )}
               </div>
               <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
-                {v.driver_name && <span className="flex items-center gap-1"><User className="size-3" />{v.driver_name}</span>}
-                {v.driver_phone && <span className="flex items-center gap-1"><Phone className="size-3" />{v.driver_phone}</span>}
+                {v.driver_name && (
+                  <span className="flex items-center gap-1">
+                    <User className="size-3" />
+                    {v.driver_name}
+                  </span>
+                )}
+                {v.driver_phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="size-3" />
+                    {v.driver_phone}
+                  </span>
+                )}
               </div>
             </div>
             {v.capacity_cylinders != null && (
               <div className="text-right shrink-0">
-                <div className="text-sm font-bold">{Number(v.capacity_cylinders).toLocaleString()}</div>
+                <div className="text-sm font-bold">
+                  {Number(v.capacity_cylinders).toLocaleString()}
+                </div>
                 <div className="text-[10px] text-muted-foreground">cyl cap</div>
               </div>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-9 shrink-0"><MoreVertical className="size-4" /></Button>
+                <Button variant="ghost" size="icon" className="size-9 shrink-0">
+                  <MoreVertical className="size-4" />
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => openEdit(v)} className="gap-2"><Pencil className="size-4" /> Edit</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setDeleteId(v.id)} className="gap-2 text-destructive focus:text-destructive">
+                <DropdownMenuItem onClick={() => openEdit(v)} className="gap-2">
+                  <Pencil className="size-4" /> Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setDeleteId(v.id)}
+                  className="gap-2 text-destructive focus:text-destructive"
+                >
                   <Trash2 className="size-4" /> Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -286,11 +469,16 @@ function VehiclesPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete vehicle?</AlertDialogTitle>
-            <AlertDialogDescription>This permanently removes the vehicle record.</AlertDialogDescription>
+            <AlertDialogDescription>
+              This permanently removes the vehicle record.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteId && del.mutate(deleteId)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={() => deleteId && del.mutate(deleteId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               {del.isPending ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -303,8 +491,18 @@ function VehiclesPage() {
 function Field({ label, name, type = "text", required, defaultValue, placeholder }: any) {
   return (
     <div>
-      <Label className="text-xs">{label}{required && <span className="text-destructive">*</span>}</Label>
-      <Input name={name} type={type} required={required} defaultValue={defaultValue} placeholder={placeholder} className="mt-1.5 h-11" />
+      <Label className="text-xs">
+        {label}
+        {required && <span className="text-destructive">*</span>}
+      </Label>
+      <Input
+        name={name}
+        type={type}
+        required={required}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
+        className="mt-1.5 h-11"
+      />
     </div>
   );
 }

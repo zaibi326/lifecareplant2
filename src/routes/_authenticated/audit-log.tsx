@@ -5,7 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { History, Search, Plus, Pencil, Trash2, Download, LogIn, Circle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/audit-log")({
@@ -29,7 +35,13 @@ function AuditLogPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["audit-log"],
     queryFn: async () =>
-      (await supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(500)).data ?? [],
+      (
+        await supabase
+          .from("audit_log")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(500)
+      ).data ?? [],
   });
 
   const filtered = useMemo(() => {
@@ -51,16 +63,25 @@ function AuditLogPage() {
         <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
           <History className="size-6" /> Audit Log
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">Immutable trail of key actions across the system.</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Immutable trail of key actions across the system.
+        </p>
       </header>
 
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search entity, summary or user" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9 h-11" />
+          <Input
+            placeholder="Search entity, summary or user"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="pl-9 h-11"
+          />
         </div>
         <Select value={action} onValueChange={setAction}>
-          <SelectTrigger className="h-11 w-36"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-11 w-36">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All actions</SelectItem>
             <SelectItem value="create">Create</SelectItem>
@@ -76,7 +97,9 @@ function AuditLogPage() {
       <div className="space-y-2">
         {isLoading && <Card className="p-6 text-sm text-muted-foreground">Loading…</Card>}
         {!isLoading && filtered.length === 0 && (
-          <Card className="p-8 text-center text-sm text-muted-foreground">No audit entries match.</Card>
+          <Card className="p-8 text-center text-sm text-muted-foreground">
+            No audit entries match.
+          </Card>
         )}
         {filtered.map((r: any) => {
           const meta = ACTION_META[r.action] ?? ACTION_META.other;
@@ -91,7 +114,9 @@ function AuditLogPage() {
                   {r.summary || `${r.action} on ${r.entity}`}
                 </div>
                 <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                  <Badge variant="outline" className="text-[10px]">{r.entity}</Badge>
+                  <Badge variant="outline" className="text-[10px]">
+                    {r.entity}
+                  </Badge>
                   {r.user_email && <span className="truncate">{r.user_email}</span>}
                 </div>
               </div>

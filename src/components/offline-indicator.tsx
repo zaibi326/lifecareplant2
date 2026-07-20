@@ -11,7 +11,9 @@ export function OfflineIndicator() {
   useEffect(() => {
     setMounted(true);
     setOnline(navigator.onLine);
-    const refresh = () => { void pendingCount().then(setPending); };
+    const refresh = () => {
+      void pendingCount().then(setPending);
+    };
     refresh();
     const unsub = subscribe(refresh);
     const on = () => setOnline(true);
@@ -29,11 +31,15 @@ export function OfflineIndicator() {
 
   if (!mounted || (online && pending === 0)) return null;
 
-
   const sync = async () => {
     if (!online) return;
     setSyncing(true);
-    try { await flushQueue(); } finally { setSyncing(false); pendingCount().then(setPending); }
+    try {
+      await flushQueue();
+    } finally {
+      setSyncing(false);
+      pendingCount().then(setPending);
+    }
   };
 
   return (

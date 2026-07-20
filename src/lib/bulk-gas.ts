@@ -15,7 +15,11 @@ export const LITRE_TO_M3 = 0.001; // 1 litre = 0.001 m³
  * - litre → × 0.001
  * - kg    → × oxygen factor (needs a gas-specific factor; defaults to oxygen)
  */
-export function toM3(value: number | null | undefined, unit: string | null | undefined, kgFactor = DEFAULT_OXYGEN_FACTOR): number {
+export function toM3(
+  value: number | null | undefined,
+  unit: string | null | undefined,
+  kgFactor = DEFAULT_OXYGEN_FACTOR,
+): number {
   const v = Number(value) || 0;
   switch ((unit ?? "m3").toLowerCase()) {
     case "cft":
@@ -53,7 +57,6 @@ export function gasConsumed(
   const native = (Number(capacity) || 0) * (Number(quantityFilled) || 0);
   return toM3(native, capacityUnit, kgFactor);
 }
-
 
 export type PurchaseRow = { gas_type_id: string | null; cubic_meter: number | null };
 export type ProductionConsumptionRow = { gas_type_id: string; gas_consumed: number | null };

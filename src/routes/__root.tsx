@@ -89,7 +89,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Life Care Plant — Gas Cylinder Plant Management" },
-      { name: "description", content: "Mobile-first plant management for gas cylinder operations — receive, deliver, payments, stock & production." },
+      {
+        name: "description",
+        content:
+          "Mobile-first plant management for gas cylinder operations — receive, deliver, payments, stock & production.",
+      },
       { name: "theme-color", content: "#0f172a" },
       { name: "application-name", content: "Life Care Plant" },
       { name: "apple-mobile-web-app-title", content: "Life Care Plant" },
@@ -97,13 +101,29 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "mobile-web-app-capable", content: "yes" },
       { property: "og:title", content: "Life Care Plant — Gas Cylinder Plant Management" },
-      { property: "og:description", content: "Mobile-first plant management for gas cylinder operations — receive, deliver, payments, stock & production." },
+      {
+        property: "og:description",
+        content:
+          "Mobile-first plant management for gas cylinder operations — receive, deliver, payments, stock & production.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Life Care Plant — Gas Cylinder Plant Management" },
-      { name: "twitter:description", content: "Mobile-first plant management for gas cylinder operations — receive, deliver, payments, stock & production." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/57b4ea18-cc82-4197-8ad2-f66e23880ebb/id-preview-620e5de3--c58e9277-f726-4011-9ace-fba48443f619.lovable.app-1782634805671.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/57b4ea18-cc82-4197-8ad2-f66e23880ebb/id-preview-620e5de3--c58e9277-f726-4011-9ace-fba48443f619.lovable.app-1782634805671.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Mobile-first plant management for gas cylinder operations — receive, deliver, payments, stock & production.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/57b4ea18-cc82-4197-8ad2-f66e23880ebb/id-preview-620e5de3--c58e9277-f726-4011-9ace-fba48443f619.lovable.app-1782634805671.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/57b4ea18-cc82-4197-8ad2-f66e23880ebb/id-preview-620e5de3--c58e9277-f726-4011-9ace-fba48443f619.lovable.app-1782634805671.png",
+      },
     ],
     links: [
       {

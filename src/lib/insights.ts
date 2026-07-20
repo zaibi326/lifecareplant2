@@ -13,14 +13,14 @@ export type Insight = {
 export type InsightInput = {
   plantStock: number;
   withCustomers: number;
-  totalOwned: number;            // 0 when not configured
+  totalOwned: number; // 0 when not configured
   outstanding: number;
   todayPayments: number;
   todayDelivered: number;
   todayReceived: number;
   todayProduction: number;
-  monthRevenue: number;          // billed this calendar month
-  monthExpenses: number;         // expenses this calendar month
+  monthRevenue: number; // billed this calendar month
+  monthExpenses: number; // expenses this calendar month
   bulkLow: { name: string; remaining: number }[]; // gas types at/below zero
   topDebtors: { name: string; due: number }[];
 };
@@ -52,7 +52,8 @@ export function generateInsights(i: InsightInput): Insight[] {
 
   // Outstanding receivables.
   if (i.outstanding > 0) {
-    const tone: InsightTone = i.outstanding > i.monthRevenue && i.monthRevenue > 0 ? "critical" : "warning";
+    const tone: InsightTone =
+      i.outstanding > i.monthRevenue && i.monthRevenue > 0 ? "critical" : "warning";
     const topLine = i.topDebtors[0];
     out.push({
       id: "outstanding",
@@ -82,9 +83,10 @@ export function generateInsights(i: InsightInput): Insight[] {
         id: "recon",
         tone: Math.abs(diff) > i.totalOwned * 0.05 ? "critical" : "warning",
         title: `Cylinder count off by ${Math.abs(diff)}`,
-        detail: diff > 0
-          ? `${diff} owned cylinders are unaccounted for. Check missing movements or opening balances.`
-          : `Tracked count exceeds the owned fleet by ${-diff}. Check for duplicate receives.`,
+        detail:
+          diff > 0
+            ? `${diff} owned cylinders are unaccounted for. Check missing movements or opening balances.`
+            : `Tracked count exceeds the owned fleet by ${-diff}. Check for duplicate receives.`,
       });
     } else {
       out.push({
@@ -114,7 +116,8 @@ export function generateInsights(i: InsightInput): Insight[] {
         id: "utilisation",
         tone: "info",
         title: `${Math.round(utilisation * 100)}% of cylinders are out with customers`,
-        detail: "A large share of the fleet is idle in the plant. Push deliveries to improve utilisation.",
+        detail:
+          "A large share of the fleet is idle in the plant. Push deliveries to improve utilisation.",
       });
     }
   }

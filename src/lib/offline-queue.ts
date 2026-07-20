@@ -31,7 +31,10 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
-async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+async function tx<T>(
+  mode: IDBTransactionMode,
+  fn: (s: IDBObjectStore) => IDBRequest<T>,
+): Promise<T> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const t = db.transaction(STORE, mode);
@@ -73,7 +76,11 @@ export function subscribe(fn: () => void) {
 }
 function notify() {
   LISTENERS.forEach((fn) => {
-    try { fn(); } catch { /* noop */ }
+    try {
+      fn();
+    } catch {
+      /* noop */
+    }
   });
 }
 
@@ -97,7 +104,8 @@ export async function flushQueue(): Promise<{ ok: number; failed: number }> {
       }
     }
     if (ok > 0) toast.success(`Synced ${ok} offline entr${ok === 1 ? "y" : "ies"}`);
-    if (failed > 0) toast.error(`${failed} offline entr${failed === 1 ? "y" : "ies"} could not sync`);
+    if (failed > 0)
+      toast.error(`${failed} offline entr${failed === 1 ? "y" : "ies"} could not sync`);
   } finally {
     flushing = false;
   }
@@ -108,7 +116,11 @@ let wired = false;
 export function startOfflineSync() {
   if (wired || typeof window === "undefined") return;
   wired = true;
-  window.addEventListener("online", () => { void flushQueue(); });
+  window.addEventListener("online", () => {
+    void flushQueue();
+  });
   // Attempt initial flush a moment after load.
-  setTimeout(() => { if (navigator.onLine) void flushQueue(); }, 1500);
+  setTimeout(() => {
+    if (navigator.onLine) void flushQueue();
+  }, 1500);
 }

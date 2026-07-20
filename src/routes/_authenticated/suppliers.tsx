@@ -12,11 +12,32 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
-  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Phone, MapPin, Truck, MoreVertical, Pencil, Trash2, History } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Plus,
+  Search,
+  Phone,
+  MapPin,
+  Truck,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  History,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/suppliers")({
@@ -25,7 +46,13 @@ export const Route = createFileRoute("/_authenticated/suppliers")({
 });
 
 type EditState = {
-  id: string; name: string; contact_person: string; phone: string; address: string; ntn_gst: string; notes: string;
+  id: string;
+  name: string;
+  contact_person: string;
+  phone: string;
+  address: string;
+  ntn_gst: string;
+  notes: string;
 } | null;
 
 function SuppliersPage() {
@@ -52,7 +79,10 @@ function SuppliersPage() {
         e.count += 1;
         totals.set(p.supplier_id, e);
       });
-      return (sup ?? []).map((s: any) => ({ ...s, totals: totals.get(s.id) ?? { m3: 0, amount: 0, count: 0 } }));
+      return (sup ?? []).map((s: any) => ({
+        ...s,
+        totals: totals.get(s.id) ?? { m3: 0, amount: 0, count: 0 },
+      }));
     },
   });
 
@@ -92,7 +122,10 @@ function SuppliersPage() {
       qc.invalidateQueries({ queryKey: ["suppliers-with-totals"] });
       setDeleteId(null);
     },
-    onError: (e: any) => { toast.error(e.message); setDeleteId(null); },
+    onError: (e: any) => {
+      toast.error(e.message);
+      setDeleteId(null);
+    },
   });
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -108,11 +141,19 @@ function SuppliersPage() {
     });
   };
 
-  const openNew = () => { setEditing(null); setOpen(true); };
+  const openNew = () => {
+    setEditing(null);
+    setOpen(true);
+  };
   const openEdit = (s: any) => {
     setEditing({
-      id: s.id, name: s.name ?? "", contact_person: s.contact_person ?? "", phone: s.phone ?? "",
-      address: s.address ?? "", ntn_gst: s.ntn_gst ?? "", notes: s.notes ?? "",
+      id: s.id,
+      name: s.name ?? "",
+      contact_person: s.contact_person ?? "",
+      phone: s.phone ?? "",
+      address: s.address ?? "",
+      ntn_gst: s.ntn_gst ?? "",
+      notes: s.notes ?? "",
     });
     setOpen(true);
   };
@@ -124,18 +165,34 @@ function SuppliersPage() {
           <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
             <Truck className="size-6" /> Suppliers
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Bulk gas suppliers and purchase history.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Bulk gas suppliers and purchase history.
+          </p>
         </div>
-        <Button onClick={openNew} className="gap-2"><Plus className="size-4" /> New Supplier</Button>
+        <Button onClick={openNew} className="gap-2">
+          <Plus className="size-4" /> New Supplier
+        </Button>
       </header>
 
-      <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+      <Sheet
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) setEditing(null);
+        }}
+      >
         <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader><SheetTitle>{editing ? "Edit Supplier" : "New Supplier"}</SheetTitle></SheetHeader>
+          <SheetHeader>
+            <SheetTitle>{editing ? "Edit Supplier" : "New Supplier"}</SheetTitle>
+          </SheetHeader>
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
             <Field label="Supplier Name" name="name" required defaultValue={editing?.name} />
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Contact Person" name="contact_person" defaultValue={editing?.contact_person} />
+              <Field
+                label="Contact Person"
+                name="contact_person"
+                defaultValue={editing?.contact_person}
+              />
               <Field label="Phone" name="phone" defaultValue={editing?.phone} />
             </div>
             <Field label="Address" name="address" defaultValue={editing?.address} />
@@ -153,11 +210,20 @@ function SuppliersPage() {
 
       <div className="relative">
         <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Search by name or phone" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9 h-11" />
+        <Input
+          placeholder="Search by name or phone"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="pl-9 h-11"
+        />
       </div>
 
       <div className="space-y-2">
-        {filtered.length === 0 && <Card className="p-8 text-center text-sm text-muted-foreground">No suppliers yet. Add your first supplier.</Card>}
+        {filtered.length === 0 && (
+          <Card className="p-8 text-center text-sm text-muted-foreground">
+            No suppliers yet. Add your first supplier.
+          </Card>
+        )}
         {filtered.map((s: any) => (
           <Card key={s.id} className="p-4 flex items-center gap-3">
             <div className="size-11 rounded-full bg-brand/10 text-brand grid place-items-center font-bold">
@@ -166,22 +232,43 @@ function SuppliersPage() {
             <div className="flex-1 min-w-0">
               <div className="font-semibold truncate">{s.name}</div>
               <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
-                {s.phone && <span className="flex items-center gap-1"><Phone className="size-3" />{s.phone}</span>}
-                {s.address && <span className="hidden sm:flex items-center gap-1 truncate"><MapPin className="size-3" />{s.address}</span>}
+                {s.phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="size-3" />
+                    {s.phone}
+                  </span>
+                )}
+                {s.address && (
+                  <span className="hidden sm:flex items-center gap-1 truncate">
+                    <MapPin className="size-3" />
+                    {s.address}
+                  </span>
+                )}
               </div>
             </div>
             <div className="text-right">
               <div className="text-sm font-bold">{formatM3(s.totals.m3)}</div>
-              <div className="text-[10px] text-muted-foreground">{formatCurrency(s.totals.amount)} • {s.totals.count} buys</div>
+              <div className="text-[10px] text-muted-foreground">
+                {formatCurrency(s.totals.amount)} • {s.totals.count} buys
+              </div>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-9 shrink-0"><MoreVertical className="size-4" /></Button>
+                <Button variant="ghost" size="icon" className="size-9 shrink-0">
+                  <MoreVertical className="size-4" />
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setHistoryId(s.id)} className="gap-2"><History className="size-4" /> Purchase history</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => openEdit(s)} className="gap-2"><Pencil className="size-4" /> Edit</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setDeleteId(s.id)} className="gap-2 text-destructive focus:text-destructive">
+                <DropdownMenuItem onClick={() => setHistoryId(s.id)} className="gap-2">
+                  <History className="size-4" /> Purchase history
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openEdit(s)} className="gap-2">
+                  <Pencil className="size-4" /> Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setDeleteId(s.id)}
+                  className="gap-2 text-destructive focus:text-destructive"
+                >
                   <Trash2 className="size-4" /> Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -197,12 +284,16 @@ function SuppliersPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete supplier?</AlertDialogTitle>
             <AlertDialogDescription>
-              Purchases linked to this supplier will block deletion. Remove or reassign purchases first.
+              Purchases linked to this supplier will block deletion. Remove or reassign purchases
+              first.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteId && del.mutate(deleteId)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={() => deleteId && del.mutate(deleteId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               {del.isPending ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -212,7 +303,13 @@ function SuppliersPage() {
   );
 }
 
-function SupplierHistoryDialog({ supplierId, onClose }: { supplierId: string | null; onClose: () => void }) {
+function SupplierHistoryDialog({
+  supplierId,
+  onClose,
+}: {
+  supplierId: string | null;
+  onClose: () => void;
+}) {
   const { data } = useQuery({
     queryKey: ["supplier-history", supplierId],
     enabled: !!supplierId,
@@ -229,11 +326,18 @@ function SupplierHistoryDialog({ supplierId, onClose }: { supplierId: string | n
   return (
     <Dialog open={!!supplierId} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Purchase History</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Purchase History</DialogTitle>
+        </DialogHeader>
         <div className="space-y-2 mt-2 max-h-[60vh] overflow-y-auto">
-          {(data ?? []).length === 0 && <p className="text-sm text-muted-foreground">No purchases recorded.</p>}
+          {(data ?? []).length === 0 && (
+            <p className="text-sm text-muted-foreground">No purchases recorded.</p>
+          )}
           {(data ?? []).map((p: any) => (
-            <div key={p.id} className="rounded-lg border p-3 flex items-center justify-between gap-3">
+            <div
+              key={p.id}
+              className="rounded-lg border p-3 flex items-center justify-between gap-3"
+            >
               <div className="min-w-0">
                 <div className="font-semibold text-sm truncate">{p.gas_types?.name ?? "—"}</div>
                 <div className="text-xs text-muted-foreground">
@@ -242,7 +346,9 @@ function SupplierHistoryDialog({ supplierId, onClose }: { supplierId: string | n
                   {p.invoice_number ? ` • ${p.invoice_number}` : ""}
                 </div>
               </div>
-              <div className="font-display font-bold text-sm shrink-0">{formatCurrency(p.total_amount)}</div>
+              <div className="font-display font-bold text-sm shrink-0">
+                {formatCurrency(p.total_amount)}
+              </div>
             </div>
           ))}
         </div>
@@ -254,8 +360,17 @@ function SupplierHistoryDialog({ supplierId, onClose }: { supplierId: string | n
 function Field({ label, name, type = "text", required, defaultValue }: any) {
   return (
     <div>
-      <Label className="text-xs">{label}{required && <span className="text-destructive">*</span>}</Label>
-      <Input name={name} type={type} required={required} defaultValue={defaultValue} className="mt-1.5 h-11" />
+      <Label className="text-xs">
+        {label}
+        {required && <span className="text-destructive">*</span>}
+      </Label>
+      <Input
+        name={name}
+        type={type}
+        required={required}
+        defaultValue={defaultValue}
+        className="mt-1.5 h-11"
+      />
     </div>
   );
 }

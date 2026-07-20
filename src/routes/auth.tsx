@@ -29,7 +29,6 @@ function AuthPage() {
 
   if (!mounted) return null;
 
-
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -57,17 +56,38 @@ function AuthPage() {
         </div>
         <div className="bg-card rounded-3xl border p-6 shadow-sm">
           <h2 className="font-display text-xl font-bold mb-1">Sign in</h2>
-          <p className="text-xs text-muted-foreground mb-6">Use the credentials provided by your plant admin.</p>
+          <p className="text-xs text-muted-foreground mb-6">
+            Use the credentials provided by your plant admin.
+          </p>
           <form onSubmit={handle} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12" required />
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12"
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12" required minLength={6} />
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-12"
+                required
+                minLength={6}
+              />
             </div>
-            <Button type="submit" disabled={loading} className="w-full h-12 bg-brand hover:bg-brand/90 text-brand-foreground font-semibold rounded-xl">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 bg-brand hover:bg-brand/90 text-brand-foreground font-semibold rounded-xl"
+            >
               {loading && <Loader2 className="size-4 animate-spin mr-2" />}
               Sign in
             </Button>
