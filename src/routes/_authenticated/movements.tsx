@@ -569,19 +569,26 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
       // Auto delivery expense: per-trip rent + manual expenses → delivery_expenses + expenses.
       if (type === "deliver" && (deliveryExpenseTotal > 0)) {
         const invNo = (payloads[0] as any)?.invoice_number ?? null;
+        const deNotes = [
+          `Delivery ${invNo ?? ""}`,
+          vehicle_number ? `Vehicle ${vehicle_number}` : null,
+          cylinderQtyTotal > 0 ? `${cylinderQtyTotal} cyl` : null,
+          cylinderKaraya > 0 ? `Karaya ${cylinderKaraya.toFixed(0)}` : null,
+        ].filter(Boolean).join(" • ");
         const { error: deErr } = await supabase.from("delivery_expenses").insert({
           date,
           invoice_number: invNo,
           vehicle_id,
           driver_id,
           vehicle_rent: perTripRent,
+          cylinder_karaya: cylinderKaraya,
           fuel: Number(fuel) || 0,
           labour: Number(labour) || 0,
           loading: Number(loadingExp) || 0,
           toll_tax: Number(tollTax) || 0,
           miscellaneous: Number(misc) || 0,
           total: deliveryExpenseTotal,
-          notes: vehicle_number ? `Delivery ${invNo ?? ""} • ${vehicle_number}` : `Delivery ${invNo ?? ""}`,
+          notes: deNotes,
         });
         if (deErr) throw deErr;
         await supabase.from("expenses").insert({
@@ -590,7 +597,7 @@ function MovementForm({ type, editing, onDone }: { type: MovType; editing: any |
           amount: deliveryExpenseTotal,
           payee: driver_name,
           reference_number: invNo,
-          notes: `Auto delivery expense${vehicle_number ? ` • ${vehicle_number}` : ""}`,
+          notes: `Auto delivery expense${vehicle_number ? ` • ${vehicle_number}` : ""}${cylinderKaraya > 0 ? ` • Karaya ${cylinderKaraya.toFixed(0)}` : ""}`,
         });
       }
       return { queued: false };
