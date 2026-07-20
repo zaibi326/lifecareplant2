@@ -260,7 +260,11 @@ function CustomersPage() {
               <Field label="Category" name="category" placeholder="Industrial / Medical" defaultValue={editing?.category} />
             </div>
             <Field label="Address" name="address" defaultValue={editing?.address} />
-            <Field label="Opening Due (Rs)" name="opening_due" type="number" defaultValue={editing?.opening_due ?? 0} />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Opening Due (Rs)" name="opening_due" type="number" defaultValue={editing?.opening_due ?? 0} />
+              <Field label="Karaya / Cylinder (Rs)" name="karaya_per_cylinder" type="number" defaultValue={editing?.karaya_per_cylinder ?? 0} placeholder="Flat rent per cylinder" />
+            </div>
+
 
             <div className="rounded-lg border p-3 space-y-2">
               <div className="flex items-center justify-between">
