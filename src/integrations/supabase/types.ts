@@ -50,6 +50,81 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_accounts: {
+        Row: {
+          account_number: string | null
+          account_title: string | null
+          active: boolean
+          bank_name: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          opening_balance: number
+          updated_at: string
+        }
+        Insert: {
+          account_number?: string | null
+          account_title?: string | null
+          active?: boolean
+          bank_name: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          opening_balance?: number
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string | null
+          account_title?: string | null
+          active?: boolean
+          bank_name?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          opening_balance?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cash_adjustments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          date: string
+          direction: string
+          id: string
+          notes: string | null
+          reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          direction?: string
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          direction?: string
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customer_opening_balances: {
         Row: {
           condition: Database["public"]["Enums"]["cylinder_condition"]
@@ -202,6 +277,73 @@ export type Database = {
         }
         Relationships: []
       }
+      cylinder_exchanges: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          cylinder_size_id: string | null
+          date: string
+          empties_out: number
+          filled_in: number
+          gas_type_id: string | null
+          id: string
+          invoice_number: string | null
+          remarks: string | null
+          supplier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          cylinder_size_id?: string | null
+          date?: string
+          empties_out?: number
+          filled_in?: number
+          gas_type_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          remarks?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          cylinder_size_id?: string | null
+          date?: string
+          empties_out?: number
+          filled_in?: number
+          gas_type_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          remarks?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cylinder_exchanges_cylinder_size_id_fkey"
+            columns: ["cylinder_size_id"]
+            isOneToOne: false
+            referencedRelation: "cylinder_sizes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cylinder_exchanges_gas_type_id_fkey"
+            columns: ["gas_type_id"]
+            isOneToOne: false
+            referencedRelation: "gas_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cylinder_exchanges_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cylinder_movements: {
         Row: {
           bill_number: string | null
@@ -309,6 +451,85 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cylinder_purchases: {
+        Row: {
+          condition: string
+          created_at: string
+          created_by: string | null
+          cylinder_size_id: string | null
+          date: string
+          gas_type_id: string | null
+          id: string
+          invoice_number: string | null
+          outstanding: number
+          payment: number
+          purchase_cost: number
+          quantity: number
+          remarks: string | null
+          supplier_id: string | null
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          condition?: string
+          created_at?: string
+          created_by?: string | null
+          cylinder_size_id?: string | null
+          date?: string
+          gas_type_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          outstanding?: number
+          payment?: number
+          purchase_cost?: number
+          quantity?: number
+          remarks?: string | null
+          supplier_id?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          condition?: string
+          created_at?: string
+          created_by?: string | null
+          cylinder_size_id?: string | null
+          date?: string
+          gas_type_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          outstanding?: number
+          payment?: number
+          purchase_cost?: number
+          quantity?: number
+          remarks?: string | null
+          supplier_id?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cylinder_purchases_cylinder_size_id_fkey"
+            columns: ["cylinder_size_id"]
+            isOneToOne: false
+            referencedRelation: "cylinder_sizes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cylinder_purchases_gas_type_id_fkey"
+            columns: ["gas_type_id"]
+            isOneToOne: false
+            referencedRelation: "gas_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cylinder_purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -501,9 +722,35 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_categories: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
+          account: string | null
           amount: number
+          bank_account_id: string | null
           category: string | null
           created_at: string
           created_by: string | null
@@ -516,7 +763,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account?: string | null
           amount?: number
+          bank_account_id?: string | null
           category?: string | null
           created_at?: string
           created_by?: string | null
@@ -529,7 +778,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account?: string | null
           amount?: number
+          bank_account_id?: string | null
           category?: string | null
           created_at?: string
           created_by?: string | null
@@ -541,7 +792,15 @@ export type Database = {
           reference_number?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "expenses_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       gas_purchases: {
         Row: {
@@ -657,6 +916,91 @@ export type Database = {
         }
         Relationships: []
       }
+      local_fillings: {
+        Row: {
+          consumed_unit: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customer_name: string | null
+          cylinder_size_id: string | null
+          date: string
+          filling_rate: number
+          gas_consumed: number
+          gas_type_id: string | null
+          id: string
+          invoice_number: string | null
+          outstanding: number
+          payment: number
+          quantity: number
+          remarks: string | null
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          consumed_unit?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          cylinder_size_id?: string | null
+          date?: string
+          filling_rate?: number
+          gas_consumed?: number
+          gas_type_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          outstanding?: number
+          payment?: number
+          quantity?: number
+          remarks?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          consumed_unit?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          cylinder_size_id?: string | null
+          date?: string
+          filling_rate?: number
+          gas_consumed?: number
+          gas_type_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          outstanding?: number
+          payment?: number
+          quantity?: number
+          remarks?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "local_fillings_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "local_fillings_cylinder_size_id_fkey"
+            columns: ["cylinder_size_id"]
+            isOneToOne: false
+            referencedRelation: "cylinder_sizes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "local_fillings_gas_type_id_fkey"
+            columns: ["gas_type_id"]
+            isOneToOne: false
+            referencedRelation: "gas_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       part_sizes: {
         Row: {
           active: boolean
@@ -713,7 +1057,9 @@ export type Database = {
       }
       payments: {
         Row: {
+          account: string | null
           amount: number
+          bank_account_id: string | null
           created_at: string
           created_by: string | null
           customer_id: string
@@ -721,10 +1067,13 @@ export type Database = {
           id: string
           method: string
           notes: string | null
+          payment_type: string | null
           reference_number: string | null
         }
         Insert: {
+          account?: string | null
           amount: number
+          bank_account_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_id: string
@@ -732,10 +1081,13 @@ export type Database = {
           id?: string
           method?: string
           notes?: string | null
+          payment_type?: string | null
           reference_number?: string | null
         }
         Update: {
+          account?: string | null
           amount?: number
+          bank_account_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string
@@ -743,9 +1095,17 @@ export type Database = {
           id?: string
           method?: string
           notes?: string | null
+          payment_type?: string | null
           reference_number?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_customer_id_fkey"
             columns: ["customer_id"]
@@ -877,6 +1237,69 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      supplier_payments: {
+        Row: {
+          account: string | null
+          amount: number
+          bank_account_id: string | null
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          method: string | null
+          notes: string | null
+          payment_type: string | null
+          reference_number: string | null
+          supplier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          account?: string | null
+          amount: number
+          bank_account_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          payment_type?: string | null
+          reference_number?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account?: string | null
+          amount?: number
+          bank_account_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          payment_type?: string | null
+          reference_number?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_payments_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payments_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppliers: {
         Row: {
