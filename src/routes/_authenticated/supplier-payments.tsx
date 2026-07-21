@@ -20,21 +20,21 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Wallet, Search } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/payments")({
-  head: () => ({ meta: [{ title: "Customer Payments — Life Care Plant" }] }),
-  component: PaymentsPage,
+export const Route = createFileRoute("/_authenticated/supplier-payments")({
+  head: () => ({ meta: [{ title: "Supplier Payments — Life Care Plant" }] }),
+  component: SupplierPaymentsPage,
 });
 
-function PaymentsPage() {
+function SupplierPaymentsPage() {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["payments"],
+    queryKey: ["supplier-payments"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("payments")
-        .select("*,customers(name)")
+        .from("supplier_payments")
+        .select("*,suppliers(name)")
         .order("created_at", { ascending: false })
         .limit(200);
       return data ?? [];
@@ -47,7 +47,7 @@ function PaymentsPage() {
     if (!s) return rows;
     return rows.filter(
       (p: any) =>
-        (p.customers?.name ?? "").toLowerCase().includes(s) ||
+        (p.suppliers?.name ?? "").toLowerCase().includes(s) ||
         (p.reference_number ?? "").toLowerCase().includes(s),
     );
   }, [data, q]);
@@ -59,23 +59,23 @@ function PaymentsPage() {
       <header className="flex items-end justify-between gap-3 flex-wrap">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Wallet className="size-6" /> Customer Payments
+            <Wallet className="size-6" /> Supplier Payments
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Amounts received from customers — goes to Cash or Bank automatically.
+            Amounts paid to suppliers — reduces Cash or Bank automatically.
           </p>
         </div>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <Button className="gap-2 bg-success text-success-foreground hover:bg-success/90">
+            <Button className="gap-2">
               <Plus className="size-4" /> New Payment
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
             <SheetHeader>
-              <SheetTitle>Record Payment</SheetTitle>
+              <SheetTitle>Pay Supplier</SheetTitle>
             </SheetHeader>
-            <PaymentForm onDone={() => setOpen(false)} />
+            <SupplierPaymentForm onDone={() => setOpen(false)} />
           </SheetContent>
         </Sheet>
       </header>
@@ -93,7 +93,7 @@ function PaymentsPage() {
       <div className="relative">
         <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search customer or reference"
+          placeholder="Search supplier or reference"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           className="pl-9 h-11"
@@ -107,14 +107,13 @@ function PaymentsPage() {
         )}
         {filtered.map((p: any) => (
           <Card key={p.id} className="p-4 flex items-center gap-3">
-            <div className="size-10 rounded-lg bg-success/15 text-success grid place-items-center">
+            <div className="size-10 rounded-lg bg-primary/10 text-primary grid place-items-center">
               <Wallet className="size-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold truncate">{p.customers?.name ?? "—"}</div>
+              <div className="font-semibold truncate">{p.suppliers?.name ?? "—"}</div>
               <div className="text-xs text-muted-foreground">
                 {formatDate(p.date)} • {(p.account ?? "cash") === "bank" ? "Bank" : "Cash"}
-                {p.method ? ` • ${p.method}` : ""}
                 {p.reference_number ? ` • Ref ${p.reference_number}` : ""}
               </div>
             </div>
@@ -131,35 +130,34 @@ function PaymentsPage() {
   );
 }
 
-function PaymentForm({ onDone }: { onDone: () => void }) {
+function SupplierPaymentForm({ onDone }: { onDone: () => void }) {
   const qc = useQueryClient();
-  const [customer, setCustomer] = useState("");
+  const [supplier, setSupplier] = useState("");
   const [account, setAccount] = useState("cash");
   const [bankAccountId, setBankAccountId] = useState("");
   const [paymentType, setPaymentType] = useState("payment");
   const [date, setDate] = useState(todayISO());
 
   const { data: lookups } = useQuery({
-    queryKey: ["payment-lookups"],
+    queryKey: ["supplier-payment-lookups"],
     queryFn: async () => {
-      const [c, b] = await Promise.all([
-        supabase.from("customers").select("id,name").order("name"),
+      const [s, b] = await Promise.all([
+        supabase.from("suppliers").select("id,name").order("name"),
         supabase.from("bank_accounts").select("id,bank_name,account_title").eq("active", true),
       ]);
-      return { customers: c.data ?? [], banks: b.data ?? [] };
+      return { suppliers: s.data ?? [], banks: b.data ?? [] };
     },
   });
 
   const save = useMutation({
     mutationFn: async (f: FormData) => {
       const amount = Number(f.get("amount") ?? 0);
-      if (!customer) throw new Error("Customer required");
+      if (!supplier) throw new Error("Supplier required");
       if (!amount || amount <= 0) throw new Error("Amount must be greater than 0");
       if (account === "bank" && !bankAccountId) throw new Error("Select a bank account");
-      const { error } = await supabase.from("payments").insert({
-        customer_id: customer,
+      const { error } = await supabase.from("supplier_payments").insert({
+        supplier_id: supplier,
         amount,
-        method: account === "bank" ? "Bank" : "Cash",
         account,
         bank_account_id: account === "bank" ? bankAccountId : null,
         payment_type: paymentType,
@@ -186,15 +184,15 @@ function PaymentForm({ onDone }: { onDone: () => void }) {
       className="mt-6 space-y-4"
     >
       <div>
-        <Label className="text-xs">Customer*</Label>
-        <Select value={customer} onValueChange={setCustomer}>
+        <Label className="text-xs">Supplier*</Label>
+        <Select value={supplier} onValueChange={setSupplier}>
           <SelectTrigger className="mt-1.5 h-11">
-            <SelectValue placeholder="Select customer" />
+            <SelectValue placeholder="Select supplier" />
           </SelectTrigger>
           <SelectContent>
-            {lookups?.customers.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
+            {lookups?.suppliers.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -217,7 +215,7 @@ function PaymentForm({ onDone }: { onDone: () => void }) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label className="text-xs">Received In</Label>
+          <Label className="text-xs">Paid From</Label>
           <Select value={account} onValueChange={setAccount}>
             <SelectTrigger className="mt-1.5 h-11">
               <SelectValue />
@@ -238,7 +236,6 @@ function PaymentForm({ onDone }: { onDone: () => void }) {
               <SelectItem value="payment">Payment</SelectItem>
               <SelectItem value="partial">Partial Payment</SelectItem>
               <SelectItem value="advance">Advance</SelectItem>
-              <SelectItem value="credit">Credit</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -274,11 +271,7 @@ function PaymentForm({ onDone }: { onDone: () => void }) {
         <Label className="text-xs">Notes</Label>
         <Textarea name="notes" rows={2} className="mt-1.5" />
       </div>
-      <Button
-        type="submit"
-        disabled={save.isPending}
-        className="w-full h-11 bg-success text-success-foreground hover:bg-success/90"
-      >
+      <Button type="submit" disabled={save.isPending} className="w-full h-11">
         {save.isPending ? "Saving…" : "Save Payment"}
       </Button>
     </form>

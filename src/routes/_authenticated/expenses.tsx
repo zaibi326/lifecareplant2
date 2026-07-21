@@ -36,17 +36,8 @@ import {
 import { Plus, Receipt, MoreVertical, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-const CATEGORIES = [
-  "Electricity",
-  "Diesel",
-  "Labour",
-  "Repairs",
-  "Vehicle",
-  "Office",
-  "Miscellaneous",
-] as const;
-
 export const Route = createFileRoute("/_authenticated/expenses")({
+
   head: () => ({ meta: [{ title: "Expenses — Life Care Plant" }] }),
   component: ExpensesPage,
 });
@@ -205,17 +196,47 @@ function ExpensesPage() {
 
 function ExpenseForm({ onDone }: { onDone: () => void }) {
   const qc = useQueryClient();
-  const [category, setCategory] = useState<string>(CATEGORIES[0]);
+  const [category, setCategory] = useState<string>("");
+  const [newCategory, setNewCategory] = useState("");
+  const [account, setAccount] = useState("cash");
+  const [bankAccountId, setBankAccountId] = useState("");
   const [date, setDate] = useState(todayISO());
+
+  const { data: lookups } = useQuery({
+    queryKey: ["expense-form-lookups"],
+    queryFn: async () => {
+      const [cats, banks] = await Promise.all([
+        supabase.from("expense_categories").select("id,name").eq("active", true).order("name"),
+        supabase.from("bank_accounts").select("id,bank_name,account_title").eq("active", true),
+      ]);
+      return { categories: cats.data ?? [], banks: banks.data ?? [] };
+    },
+  });
 
   const save = useMutation({
     mutationFn: async (f: FormData) => {
       const amount = Number(f.get("amount") ?? 0);
       if (!amount || amount <= 0) throw new Error("Amount must be greater than 0");
+      if (account === "bank" && !bankAccountId) throw new Error("Select a bank account");
+
+      // Resolve category — allow creating a new one on the fly.
+      let finalCategory = category;
+      if (category === "__new__") {
+        const name = newCategory.trim();
+        if (!name) throw new Error("Enter the new category name");
+        finalCategory = name;
+        // Create the category if it does not exist yet (unique name).
+        await supabase.from("expense_categories").upsert({ name }, { onConflict: "name" });
+      }
+      if (!finalCategory) throw new Error("Category required");
+
       const { error } = await supabase.from("expenses").insert({
-        category,
+        category: finalCategory,
         amount,
         date,
+        account,
+        bank_account_id: account === "bank" ? bankAccountId : null,
+        method: account === "bank" ? "Bank" : "Cash",
         payee: String(f.get("payee") ?? "").trim() || null,
         reference_number: String(f.get("reference_number") ?? "").trim() || null,
         notes: String(f.get("notes") ?? "").trim() || null,
@@ -242,17 +263,29 @@ function ExpenseForm({ onDone }: { onDone: () => void }) {
         <Label className="text-xs">Category*</Label>
         <Select value={category} onValueChange={setCategory}>
           <SelectTrigger className="mt-1.5 h-11">
-            <SelectValue />
+            <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
-            {CATEGORIES.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
+            {(lookups?.categories ?? []).map((c: any) => (
+              <SelectItem key={c.id} value={c.name}>
+                {c.name}
               </SelectItem>
             ))}
+            <SelectItem value="__new__">+ New category…</SelectItem>
           </SelectContent>
         </Select>
       </div>
+      {category === "__new__" && (
+        <div>
+          <Label className="text-xs">New Category Name*</Label>
+          <Input
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            className="mt-1.5 h-11"
+            placeholder="e.g. Security"
+          />
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-xs">Amount (Rs)*</Label>
@@ -270,13 +303,48 @@ function ExpenseForm({ onDone }: { onDone: () => void }) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
+          <Label className="text-xs">Paid From</Label>
+          <Select value={account} onValueChange={setAccount}>
+            <SelectTrigger className="mt-1.5 h-11">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cash">Cash in Hand</SelectItem>
+              <SelectItem value="bank">Bank Account</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
           <Label className="text-xs">Payee</Label>
           <Input name="payee" className="mt-1.5 h-11" />
         </div>
+      </div>
+      {account === "bank" && (
         <div>
-          <Label className="text-xs">Reference #</Label>
-          <Input name="reference_number" className="mt-1.5 h-11" />
+          <Label className="text-xs">Bank Account*</Label>
+          <Select value={bankAccountId} onValueChange={setBankAccountId}>
+            <SelectTrigger className="mt-1.5 h-11">
+              <SelectValue placeholder="Select bank account" />
+            </SelectTrigger>
+            <SelectContent>
+              {(lookups?.banks ?? []).map((b: any) => (
+                <SelectItem key={b.id} value={b.id}>
+                  {b.bank_name}
+                  {b.account_title ? ` — ${b.account_title}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {(lookups?.banks ?? []).length === 0 && (
+            <p className="text-[11px] text-muted-foreground mt-1">
+              No bank accounts yet. Add one in the Bank module first.
+            </p>
+          )}
         </div>
+      )}
+      <div>
+        <Label className="text-xs">Reference #</Label>
+        <Input name="reference_number" className="mt-1.5 h-11" />
       </div>
       <div>
         <Label className="text-xs">Notes</Label>
@@ -288,3 +356,5 @@ function ExpenseForm({ onDone }: { onDone: () => void }) {
     </form>
   );
 }
+
+

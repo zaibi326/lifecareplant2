@@ -23,7 +23,10 @@ import {
   DatabaseBackup,
   TrendingUp,
   ArrowRightLeft,
+  Coins,
+  Landmark,
 } from "lucide-react";
+
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -43,8 +46,13 @@ const navItems = [
   { to: "/cylinder-exchange", label: "Cylinder Exchange", icon: ArrowRightLeft },
   { to: "/cylinder-purchases", label: "New Cylinders", icon: PackagePlus },
   { to: "/stock", label: "Stock", icon: Package },
+  { to: "/payments", label: "Customer Payments", icon: Wallet },
+  { to: "/supplier-payments", label: "Supplier Payments", icon: Wallet },
+  { to: "/cash", label: "Cash in Hand", icon: Coins },
+  { to: "/bank", label: "Bank", icon: Landmark },
   { to: "/expenses", label: "Expenses", icon: Receipt },
   { to: "/vehicles", label: "Vehicles", icon: Car },
+
   { to: "/drivers", label: "Drivers", icon: UserCog },
   { to: "/employees", label: "Employees", icon: UserCog },
 

@@ -14,6 +14,8 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAuditLogRouteImport } from './routes/_authenticated/audit-log'
 import { Route as AuthenticatedBackupRouteImport } from './routes/_authenticated/backup'
+import { Route as AuthenticatedBankRouteImport } from './routes/_authenticated/bank'
+import { Route as AuthenticatedCashRouteImport } from './routes/_authenticated/cash'
 import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
 import { Route as AuthenticatedCylinderExchangeRouteImport } from './routes/_authenticated/cylinder-exchange'
 import { Route as AuthenticatedCylinderPurchasesRouteImport } from './routes/_authenticated/cylinder-purchases'
@@ -30,6 +32,7 @@ import { Route as AuthenticatedPurchasesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedStockRouteImport } from './routes/_authenticated/stock'
+import { Route as AuthenticatedSupplierPaymentsRouteImport } from './routes/_authenticated/supplier-payments'
 import { Route as AuthenticatedSuppliersRouteImport } from './routes/_authenticated/suppliers'
 import { Route as AuthenticatedVehiclesRouteImport } from './routes/_authenticated/vehicles'
 import { Route as AuthenticatedCustomersCustomerIdRouteImport } from './routes/_authenticated/customers.$customerId'
@@ -56,6 +59,16 @@ const AuthenticatedAuditLogRoute = AuthenticatedAuditLogRouteImport.update({
 const AuthenticatedBackupRoute = AuthenticatedBackupRouteImport.update({
   id: '/backup',
   path: '/backup',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBankRoute = AuthenticatedBankRouteImport.update({
+  id: '/bank',
+  path: '/bank',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCashRoute = AuthenticatedCashRouteImport.update({
+  id: '/cash',
+  path: '/cash',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCustomersRoute = AuthenticatedCustomersRouteImport.update({
@@ -141,6 +154,12 @@ const AuthenticatedStockRoute = AuthenticatedStockRouteImport.update({
   path: '/stock',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSupplierPaymentsRoute =
+  AuthenticatedSupplierPaymentsRouteImport.update({
+    id: '/supplier-payments',
+    path: '/supplier-payments',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSuppliersRoute = AuthenticatedSuppliersRouteImport.update({
   id: '/suppliers',
   path: '/suppliers',
@@ -163,6 +182,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/audit-log': typeof AuthenticatedAuditLogRoute
   '/backup': typeof AuthenticatedBackupRoute
+  '/bank': typeof AuthenticatedBankRoute
+  '/cash': typeof AuthenticatedCashRoute
   '/customers': typeof AuthenticatedCustomersRouteWithChildren
   '/cylinder-exchange': typeof AuthenticatedCylinderExchangeRoute
   '/cylinder-purchases': typeof AuthenticatedCylinderPurchasesRoute
@@ -179,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/stock': typeof AuthenticatedStockRoute
+  '/supplier-payments': typeof AuthenticatedSupplierPaymentsRoute
   '/suppliers': typeof AuthenticatedSuppliersRoute
   '/vehicles': typeof AuthenticatedVehiclesRoute
   '/customers/$customerId': typeof AuthenticatedCustomersCustomerIdRoute
@@ -188,6 +210,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/audit-log': typeof AuthenticatedAuditLogRoute
   '/backup': typeof AuthenticatedBackupRoute
+  '/bank': typeof AuthenticatedBankRoute
+  '/cash': typeof AuthenticatedCashRoute
   '/customers': typeof AuthenticatedCustomersRouteWithChildren
   '/cylinder-exchange': typeof AuthenticatedCylinderExchangeRoute
   '/cylinder-purchases': typeof AuthenticatedCylinderPurchasesRoute
@@ -204,6 +228,7 @@ export interface FileRoutesByTo {
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/stock': typeof AuthenticatedStockRoute
+  '/supplier-payments': typeof AuthenticatedSupplierPaymentsRoute
   '/suppliers': typeof AuthenticatedSuppliersRoute
   '/vehicles': typeof AuthenticatedVehiclesRoute
   '/customers/$customerId': typeof AuthenticatedCustomersCustomerIdRoute
@@ -215,6 +240,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/audit-log': typeof AuthenticatedAuditLogRoute
   '/_authenticated/backup': typeof AuthenticatedBackupRoute
+  '/_authenticated/bank': typeof AuthenticatedBankRoute
+  '/_authenticated/cash': typeof AuthenticatedCashRoute
   '/_authenticated/customers': typeof AuthenticatedCustomersRouteWithChildren
   '/_authenticated/cylinder-exchange': typeof AuthenticatedCylinderExchangeRoute
   '/_authenticated/cylinder-purchases': typeof AuthenticatedCylinderPurchasesRoute
@@ -231,6 +258,7 @@ export interface FileRoutesById {
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/stock': typeof AuthenticatedStockRoute
+  '/_authenticated/supplier-payments': typeof AuthenticatedSupplierPaymentsRoute
   '/_authenticated/suppliers': typeof AuthenticatedSuppliersRoute
   '/_authenticated/vehicles': typeof AuthenticatedVehiclesRoute
   '/_authenticated/customers/$customerId': typeof AuthenticatedCustomersCustomerIdRoute
@@ -242,6 +270,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/audit-log'
     | '/backup'
+    | '/bank'
+    | '/cash'
     | '/customers'
     | '/cylinder-exchange'
     | '/cylinder-purchases'
@@ -258,6 +288,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/stock'
+    | '/supplier-payments'
     | '/suppliers'
     | '/vehicles'
     | '/customers/$customerId'
@@ -267,6 +298,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/audit-log'
     | '/backup'
+    | '/bank'
+    | '/cash'
     | '/customers'
     | '/cylinder-exchange'
     | '/cylinder-purchases'
@@ -283,6 +316,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/stock'
+    | '/supplier-payments'
     | '/suppliers'
     | '/vehicles'
     | '/customers/$customerId'
@@ -293,6 +327,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/audit-log'
     | '/_authenticated/backup'
+    | '/_authenticated/bank'
+    | '/_authenticated/cash'
     | '/_authenticated/customers'
     | '/_authenticated/cylinder-exchange'
     | '/_authenticated/cylinder-purchases'
@@ -309,6 +345,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports'
     | '/_authenticated/settings'
     | '/_authenticated/stock'
+    | '/_authenticated/supplier-payments'
     | '/_authenticated/suppliers'
     | '/_authenticated/vehicles'
     | '/_authenticated/customers/$customerId'
@@ -355,6 +392,20 @@ declare module '@tanstack/react-router' {
       path: '/backup'
       fullPath: '/backup'
       preLoaderRoute: typeof AuthenticatedBackupRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/bank': {
+      id: '/_authenticated/bank'
+      path: '/bank'
+      fullPath: '/bank'
+      preLoaderRoute: typeof AuthenticatedBankRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/cash': {
+      id: '/_authenticated/cash'
+      path: '/cash'
+      fullPath: '/cash'
+      preLoaderRoute: typeof AuthenticatedCashRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/customers': {
@@ -469,6 +520,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStockRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/supplier-payments': {
+      id: '/_authenticated/supplier-payments'
+      path: '/supplier-payments'
+      fullPath: '/supplier-payments'
+      preLoaderRoute: typeof AuthenticatedSupplierPaymentsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/suppliers': {
       id: '/_authenticated/suppliers'
       path: '/suppliers'
@@ -511,6 +569,8 @@ const AuthenticatedCustomersRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAuditLogRoute: typeof AuthenticatedAuditLogRoute
   AuthenticatedBackupRoute: typeof AuthenticatedBackupRoute
+  AuthenticatedBankRoute: typeof AuthenticatedBankRoute
+  AuthenticatedCashRoute: typeof AuthenticatedCashRoute
   AuthenticatedCustomersRoute: typeof AuthenticatedCustomersRouteWithChildren
   AuthenticatedCylinderExchangeRoute: typeof AuthenticatedCylinderExchangeRoute
   AuthenticatedCylinderPurchasesRoute: typeof AuthenticatedCylinderPurchasesRoute
@@ -527,6 +587,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedStockRoute: typeof AuthenticatedStockRoute
+  AuthenticatedSupplierPaymentsRoute: typeof AuthenticatedSupplierPaymentsRoute
   AuthenticatedSuppliersRoute: typeof AuthenticatedSuppliersRoute
   AuthenticatedVehiclesRoute: typeof AuthenticatedVehiclesRoute
 }
@@ -534,6 +595,8 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAuditLogRoute: AuthenticatedAuditLogRoute,
   AuthenticatedBackupRoute: AuthenticatedBackupRoute,
+  AuthenticatedBankRoute: AuthenticatedBankRoute,
+  AuthenticatedCashRoute: AuthenticatedCashRoute,
   AuthenticatedCustomersRoute: AuthenticatedCustomersRouteWithChildren,
   AuthenticatedCylinderExchangeRoute: AuthenticatedCylinderExchangeRoute,
   AuthenticatedCylinderPurchasesRoute: AuthenticatedCylinderPurchasesRoute,
@@ -550,6 +613,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedStockRoute: AuthenticatedStockRoute,
+  AuthenticatedSupplierPaymentsRoute: AuthenticatedSupplierPaymentsRoute,
   AuthenticatedSuppliersRoute: AuthenticatedSuppliersRoute,
   AuthenticatedVehiclesRoute: AuthenticatedVehiclesRoute,
 }

@@ -311,43 +311,137 @@ function SupplierHistoryDialog({
   onClose: () => void;
 }) {
   const { data } = useQuery({
-    queryKey: ["supplier-history", supplierId],
+    queryKey: ["supplier-ledger", supplierId],
     enabled: !!supplierId,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("gas_purchases")
-        .select("*,gas_types(name,color)")
-        .eq("supplier_id", supplierId!)
-        .order("date", { ascending: false });
-      return data ?? [];
+      const [gp, cp, sp] = await Promise.all([
+        supabase
+          .from("gas_purchases")
+          .select("*,gas_types(name,color)")
+          .eq("supplier_id", supplierId!),
+        supabase.from("cylinder_purchases").select("*").eq("supplier_id", supplierId!),
+        supabase.from("supplier_payments").select("*").eq("supplier_id", supplierId!),
+      ]);
+      return {
+        gasPurchases: gp.data ?? [],
+        cylinderPurchases: cp.data ?? [],
+        payments: sp.data ?? [],
+      };
     },
   });
+
+  // Build a running-balance ledger: purchases increase what we owe, payments reduce it.
+  const ledger = useMemo(() => {
+    type Row = {
+      date: string;
+      ts: string;
+      title: string;
+      detail: string;
+      charge: number;
+      payment: number;
+    };
+    const rows: Row[] = [];
+    (data?.gasPurchases ?? []).forEach((p: any) =>
+      rows.push({
+        date: p.date,
+        ts: p.created_at,
+        title: p.gas_types?.name ?? "Gas Purchase",
+        detail: `${formatM3(p.cubic_meter)}${p.invoice_number ? ` • ${p.invoice_number}` : ""}`,
+        charge: Number(p.total_amount ?? 0),
+        payment: 0,
+      }),
+    );
+    (data?.cylinderPurchases ?? []).forEach((p: any) =>
+      rows.push({
+        date: p.date,
+        ts: p.created_at,
+        title: "Cylinder Purchase",
+        detail: `${p.quantity} cyl${p.invoice_number ? ` • ${p.invoice_number}` : ""}`,
+        charge: Number(p.total_amount ?? 0),
+        payment: 0,
+      }),
+    );
+    (data?.payments ?? []).forEach((p: any) =>
+      rows.push({
+        date: p.date,
+        ts: p.created_at,
+        title: "Payment",
+        detail: `${(p.account ?? "cash") === "bank" ? "Bank" : "Cash"}${p.reference_number ? ` • Ref ${p.reference_number}` : ""}`,
+        charge: 0,
+        payment: Number(p.amount ?? 0),
+      }),
+    );
+    const sorted = [...rows].sort((a, b) => (a.ts ?? a.date).localeCompare(b.ts ?? b.date));
+    let running = 0;
+    const withRunning = sorted.map((r) => {
+      running += r.charge - r.payment;
+      return { ...r, running };
+    });
+    const totalCharge = rows.reduce((a, r) => a + r.charge, 0);
+    const totalPayment = rows.reduce((a, r) => a + r.payment, 0);
+    // Show newest first in the UI.
+    return {
+      rows: withRunning.reverse(),
+      totalCharge,
+      totalPayment,
+      outstanding: totalCharge - totalPayment,
+    };
+  }, [data]);
 
   return (
     <Dialog open={!!supplierId} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Purchase History</DialogTitle>
+          <DialogTitle>Supplier Ledger</DialogTitle>
         </DialogHeader>
-        <div className="space-y-2 mt-2 max-h-[60vh] overflow-y-auto">
-          {(data ?? []).length === 0 && (
-            <p className="text-sm text-muted-foreground">No purchases recorded.</p>
-          )}
-          {(data ?? []).map((p: any) => (
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-lg border p-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Purchases
+            </div>
+            <div className="font-display font-bold text-sm mt-0.5">
+              {formatCurrency(ledger.totalCharge)}
+            </div>
+          </div>
+          <div className="rounded-lg border p-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Paid</div>
+            <div className="font-display font-bold text-sm mt-0.5 text-success">
+              {formatCurrency(ledger.totalPayment)}
+            </div>
+          </div>
+          <div className="rounded-lg border p-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Outstanding
+            </div>
             <div
-              key={p.id}
-              className="rounded-lg border p-3 flex items-center justify-between gap-3"
+              className={`font-display font-bold text-sm mt-0.5 ${ledger.outstanding > 0 ? "text-destructive" : ""}`}
             >
+              {formatCurrency(ledger.outstanding)}
+            </div>
+          </div>
+        </div>
+        <div className="space-y-2 mt-2 max-h-[50vh] overflow-y-auto">
+          {ledger.rows.length === 0 && (
+            <p className="text-sm text-muted-foreground">No activity recorded.</p>
+          )}
+          {ledger.rows.map((r, i) => (
+            <div key={i} className="rounded-lg border p-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <div className="font-semibold text-sm truncate">{p.gas_types?.name ?? "—"}</div>
+                <div className="font-semibold text-sm truncate">{r.title}</div>
                 <div className="text-xs text-muted-foreground">
-                  {formatDate(p.date)} • {formatM3(p.cubic_meter)}
-                  {p.unit === "kg" ? ` (${Number(p.kg ?? p.quantity).toLocaleString()} kg)` : ""}
-                  {p.invoice_number ? ` • ${p.invoice_number}` : ""}
+                  {formatDate(r.date)} • {r.detail}
                 </div>
               </div>
-              <div className="font-display font-bold text-sm shrink-0">
-                {formatCurrency(p.total_amount)}
+              <div className="text-right shrink-0">
+                <div
+                  className={`font-display font-bold text-sm ${r.payment > 0 ? "text-success" : ""}`}
+                >
+                  {r.payment > 0 ? "−" : ""}
+                  {formatCurrency(r.payment > 0 ? r.payment : r.charge)}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  Bal {formatCurrency(r.running)}
+                </div>
               </div>
             </div>
           ))}

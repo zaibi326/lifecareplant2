@@ -441,6 +441,7 @@ export type Database = {
         Row: {
           created_at: string;
           created_by: string | null;
+          cylinder_karaya: number;
           date: string;
           driver_id: string | null;
           fuel: number;
@@ -458,6 +459,7 @@ export type Database = {
         Insert: {
           created_at?: string;
           created_by?: string | null;
+          cylinder_karaya?: number;
           date?: string;
           driver_id?: string | null;
           fuel?: number;
@@ -475,6 +477,7 @@ export type Database = {
         Update: {
           created_at?: string;
           created_by?: string | null;
+          cylinder_karaya?: number;
           date?: string;
           driver_id?: string | null;
           fuel?: number;
@@ -574,7 +577,9 @@ export type Database = {
       };
       expenses: {
         Row: {
+          account: string;
           amount: number;
+          bank_account_id: string | null;
           category: string | null;
           created_at: string;
           created_by: string | null;
@@ -587,7 +592,9 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          account?: string;
           amount?: number;
+          bank_account_id?: string | null;
           category?: string | null;
           created_at?: string;
           created_by?: string | null;
@@ -600,7 +607,9 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          account?: string;
           amount?: number;
+          bank_account_id?: string | null;
           category?: string | null;
           created_at?: string;
           created_by?: string | null;
@@ -611,6 +620,144 @@ export type Database = {
           payee?: string | null;
           reference_number?: string | null;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      expense_categories: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          name: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          name: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          name?: string;
+        };
+        Relationships: [];
+      };
+      bank_accounts: {
+        Row: {
+          account_number: string | null;
+          account_title: string | null;
+          active: boolean;
+          bank_name: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          notes: string | null;
+          opening_balance: number;
+          updated_at: string;
+        };
+        Insert: {
+          account_number?: string | null;
+          account_title?: string | null;
+          active?: boolean;
+          bank_name: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          notes?: string | null;
+          opening_balance?: number;
+          updated_at?: string;
+        };
+        Update: {
+          account_number?: string | null;
+          account_title?: string | null;
+          active?: boolean;
+          bank_name?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          notes?: string | null;
+          opening_balance?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      cash_adjustments: {
+        Row: {
+          amount: number;
+          created_at: string;
+          created_by: string | null;
+          date: string;
+          direction: string;
+          id: string;
+          notes: string | null;
+          reason: string | null;
+        };
+        Insert: {
+          amount: number;
+          created_at?: string;
+          created_by?: string | null;
+          date?: string;
+          direction?: string;
+          id?: string;
+          notes?: string | null;
+          reason?: string | null;
+        };
+        Update: {
+          amount?: number;
+          created_at?: string;
+          created_by?: string | null;
+          date?: string;
+          direction?: string;
+          id?: string;
+          notes?: string | null;
+          reason?: string | null;
+        };
+        Relationships: [];
+      };
+      supplier_payments: {
+        Row: {
+          account: string;
+          amount: number;
+          bank_account_id: string | null;
+          created_at: string;
+          created_by: string | null;
+          date: string;
+          id: string;
+          notes: string | null;
+          payment_type: string;
+          reference_number: string | null;
+          supplier_id: string;
+        };
+        Insert: {
+          account?: string;
+          amount: number;
+          bank_account_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          date?: string;
+          id?: string;
+          notes?: string | null;
+          payment_type?: string;
+          reference_number?: string | null;
+          supplier_id: string;
+        };
+        Update: {
+          account?: string;
+          amount?: number;
+          bank_account_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          date?: string;
+          id?: string;
+          notes?: string | null;
+          payment_type?: string;
+          reference_number?: string | null;
+          supplier_id?: string;
         };
         Relationships: [];
       };
@@ -844,7 +991,9 @@ export type Database = {
       };
       payments: {
         Row: {
+          account: string;
           amount: number;
+          bank_account_id: string | null;
           created_at: string;
           created_by: string | null;
           customer_id: string;
@@ -852,10 +1001,13 @@ export type Database = {
           id: string;
           method: string;
           notes: string | null;
+          payment_type: string;
           reference_number: string | null;
         };
         Insert: {
+          account?: string;
           amount: number;
+          bank_account_id?: string | null;
           created_at?: string;
           created_by?: string | null;
           customer_id: string;
@@ -863,10 +1015,13 @@ export type Database = {
           id?: string;
           method?: string;
           notes?: string | null;
+          payment_type?: string;
           reference_number?: string | null;
         };
         Update: {
+          account?: string;
           amount?: number;
+          bank_account_id?: string | null;
           created_at?: string;
           created_by?: string | null;
           customer_id?: string;
@@ -874,6 +1029,7 @@ export type Database = {
           id?: string;
           method?: string;
           notes?: string | null;
+          payment_type?: string;
           reference_number?: string | null;
         };
         Relationships: [

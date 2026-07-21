@@ -4,14 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatDate, todayISO } from "@/lib/format";
 import { buildBulkBalances, formatM3 } from "@/lib/bulk-gas";
 import { generateInsights, type Insight } from "@/lib/insights";
+import { computeCashInHand, computeTotalBankBalance } from "@/lib/finance";
+
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
-  Wallet,
-  Factory,
-  Package,
-  Users,
-  TrendingUp,
   AlertCircle,
   Fuel,
   Sparkles,
@@ -19,6 +16,7 @@ import {
   AlertTriangle,
   Info,
 } from "lucide-react";
+
 
 import {
   ResponsiveContainer,
@@ -55,7 +53,13 @@ function Dashboard() {
         monthMoves,
         monthExp,
         settings,
+        allCustPays,
+        allSupPays,
+        allExpenses,
+        cashAdjustments,
+        bankAccounts,
       ] = await Promise.all([
+
         supabase
           .from("cylinder_movements")
           .select(
@@ -84,7 +88,13 @@ function Dashboard() {
           .gte("date", monthStart),
         supabase.from("expenses").select("amount,date").gte("date", monthStart),
         supabase.from("settings").select("total_owned_cylinders").eq("id", 1).maybeSingle(),
+        supabase.from("payments").select("amount,account"),
+        supabase.from("supplier_payments").select("amount,account,bank_account_id"),
+        supabase.from("expenses").select("amount,account,bank_account_id"),
+        supabase.from("cash_adjustments").select("amount,direction"),
+        supabase.from("bank_accounts").select("id,bank_name,account_title,opening_balance"),
       ]);
+
       return {
         movements: movements.data ?? [],
         payments: payments.data ?? [],
@@ -104,9 +114,15 @@ function Dashboard() {
           0,
         ),
         totalOwned: Number(settings.data?.total_owned_cylinders ?? 0),
+        allCustPays: allCustPays.data ?? [],
+        allSupPays: allSupPays.data ?? [],
+        allExpenses: allExpenses.data ?? [],
+        cashAdjustments: cashAdjustments.data ?? [],
+        bankAccounts: bankAccounts.data ?? [],
       };
     },
   });
+
 
   const today = todayISO();
   const movs = data?.movements ?? [];
@@ -167,6 +183,21 @@ function Dashboard() {
   );
   const paid = sum(data?.allPays ?? [], "amount");
   const outstanding = Math.max(0, openingDue + billed - paid);
+
+  // Cash-in-hand & bank balances (Part 2 finance engine)
+  const cash = computeCashInHand({
+    customerPayments: (data?.allCustPays ?? []) as any,
+    supplierPayments: (data?.allSupPays ?? []) as any,
+    expenses: (data?.allExpenses ?? []) as any,
+    adjustments: (data?.cashAdjustments ?? []) as any,
+  });
+  const bankBalance = computeTotalBankBalance(
+    (data?.bankAccounts ?? []) as any,
+    (data?.allCustPays ?? []) as any,
+    (data?.allSupPays ?? []) as any,
+    (data?.allExpenses ?? []) as any,
+  );
+
 
   // Bulk gas remaining per gas type = purchased − consumed
   const bulkBalances = buildBulkBalances(data?.purchases ?? [], data?.allProduction ?? []);
@@ -294,12 +325,19 @@ function Dashboard() {
           tone="warning"
         />
         <Kpi
-          label="Total Customers"
-          value={(data?.customers.length ?? 0).toString()}
-          sub="Active"
-          tone="default"
+          label="Cash in Hand"
+          value={formatCurrency(cash.balance)}
+          sub="Cash box"
+          tone={cash.balance < 0 ? "warning" : "success"}
+        />
+        <Kpi
+          label="Bank Balance"
+          value={formatCurrency(bankBalance)}
+          sub={`${data?.bankAccounts.length ?? 0} account(s)`}
+          tone={bankBalance < 0 ? "warning" : "default"}
         />
       </section>
+
 
       {insights.length > 0 && (
         <section className="bg-card border rounded-2xl p-5">
