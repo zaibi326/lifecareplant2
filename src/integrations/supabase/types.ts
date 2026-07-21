@@ -1249,6 +1249,7 @@ export type Database = {
           id: string
           method: string | null
           notes: string | null
+          payment_type: string | null
           reference_number: string | null
           supplier_id: string | null
           updated_at: string
@@ -1263,6 +1264,7 @@ export type Database = {
           id?: string
           method?: string | null
           notes?: string | null
+          payment_type?: string | null
           reference_number?: string | null
           supplier_id?: string | null
           updated_at?: string
@@ -1277,6 +1279,7 @@ export type Database = {
           id?: string
           method?: string | null
           notes?: string | null
+          payment_type?: string | null
           reference_number?: string | null
           supplier_id?: string | null
           updated_at?: string
