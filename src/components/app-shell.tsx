@@ -38,7 +38,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const navItems = [
+type NavLeaf = { to: string; label: string; icon: any };
+type NavGroup = { label: string; icon: any; children: NavLeaf[] };
+type NavEntry = NavLeaf | NavGroup;
+
+const navItems: NavEntry[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/suppliers", label: "Suppliers", icon: Truck },
@@ -47,22 +51,32 @@ const navItems = [
   { to: "/cylinder-exchange", label: "Cylinder Exchange", icon: ArrowRightLeft },
   { to: "/cylinder-purchases", label: "New Cylinders", icon: PackagePlus },
   { to: "/stock", label: "Stock", icon: Package },
-  { to: "/payments", label: "Customer Payments", icon: Wallet },
-  { to: "/supplier-payments", label: "Supplier Payments", icon: Wallet },
+  {
+    label: "Payments",
+    icon: Wallet,
+    children: [
+      { to: "/payments", label: "Customer Payments", icon: Wallet },
+      { to: "/supplier-payments", label: "Supplier Payments", icon: Wallet },
+    ],
+  },
   { to: "/cash", label: "Cash in Hand", icon: Coins },
   { to: "/bank", label: "Bank", icon: Landmark },
   { to: "/expenses", label: "Expenses", icon: Receipt },
-  { to: "/vehicles", label: "Vehicles", icon: Car },
-
-  { to: "/drivers", label: "Drivers", icon: UserCog },
-  { to: "/employees", label: "Employees", icon: UserCog },
-
+  {
+    label: "Fleet & Staff",
+    icon: Car,
+    children: [
+      { to: "/vehicles", label: "Vehicles", icon: Car },
+      { to: "/drivers", label: "Drivers", icon: UserCog },
+      { to: "/employees", label: "Employees", icon: UserCog },
+    ],
+  },
   { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/profit", label: "Profit & Loss", icon: TrendingUp },
   { to: "/audit-log", label: "Audit Log", icon: History },
   { to: "/backup", label: "Backup", icon: DatabaseBackup },
   { to: "/settings", label: "Settings", icon: Settings },
-] as const;
+];
 
 const mobileItems = [
   { to: "/dashboard", label: "Home", icon: LayoutDashboard },
