@@ -117,8 +117,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
+            if ("children" in item) {
+              return (
+                <NavGroupItem key={item.label} item={item} isActive={isActive} />
+              );
+            }
             const Icon = item.icon;
             const active = isActive(item.to);
             return (
