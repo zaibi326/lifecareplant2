@@ -298,3 +298,55 @@ function QuickAction({
     </button>
   );
 }
+
+function NavGroupItem({
+  item,
+  isActive,
+}: {
+  item: { label: string; icon: any; children: { to: string; label: string; icon: any }[] };
+  isActive: (to: string) => boolean;
+}) {
+  const hasActive = item.children.some((c) => isActive(c.to));
+  const [open, setOpen] = useState(hasActive);
+  useEffect(() => {
+    if (hasActive) setOpen(true);
+  }, [hasActive]);
+  const Icon = item.icon;
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+          hasActive ? "text-brand" : "text-foreground hover:bg-muted"
+        }`}
+      >
+        <Icon className="size-4" />
+        <span className="flex-1 text-left">{item.label}</span>
+        <ChevronDown className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="ml-4 mt-1 space-y-1 border-l pl-2">
+          {item.children.map((c) => {
+            const CIcon = c.icon;
+            const active = isActive(c.to);
+            return (
+              <Link
+                key={c.to}
+                to={c.to}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-brand text-brand-foreground shadow-sm"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                <CIcon className="size-4" />
+                {c.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
