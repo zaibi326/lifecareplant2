@@ -54,6 +54,7 @@ export type Database = {
         Row: {
           account_number: string | null
           account_title: string | null
+          active: boolean
           bank_name: string
           created_at: string
           created_by: string | null
@@ -65,6 +66,7 @@ export type Database = {
         Insert: {
           account_number?: string | null
           account_title?: string | null
+          active?: boolean
           bank_name: string
           created_at?: string
           created_by?: string | null
@@ -76,6 +78,7 @@ export type Database = {
         Update: {
           account_number?: string | null
           account_title?: string | null
+          active?: boolean
           bank_name?: string
           created_at?: string
           created_by?: string | null
@@ -719,6 +722,30 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_categories: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           account: string | null
@@ -888,6 +915,91 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      local_fillings: {
+        Row: {
+          consumed_unit: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customer_name: string | null
+          cylinder_size_id: string | null
+          date: string
+          filling_rate: number
+          gas_consumed: number
+          gas_type_id: string | null
+          id: string
+          invoice_number: string | null
+          outstanding: number
+          payment: number
+          quantity: number
+          remarks: string | null
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          consumed_unit?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          cylinder_size_id?: string | null
+          date?: string
+          filling_rate?: number
+          gas_consumed?: number
+          gas_type_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          outstanding?: number
+          payment?: number
+          quantity?: number
+          remarks?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          consumed_unit?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          cylinder_size_id?: string | null
+          date?: string
+          filling_rate?: number
+          gas_consumed?: number
+          gas_type_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          outstanding?: number
+          payment?: number
+          quantity?: number
+          remarks?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "local_fillings_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "local_fillings_cylinder_size_id_fkey"
+            columns: ["cylinder_size_id"]
+            isOneToOne: false
+            referencedRelation: "cylinder_sizes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "local_fillings_gas_type_id_fkey"
+            columns: ["gas_type_id"]
+            isOneToOne: false
+            referencedRelation: "gas_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       part_sizes: {
         Row: {
