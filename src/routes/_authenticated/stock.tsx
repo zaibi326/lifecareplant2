@@ -54,10 +54,16 @@ function StockPage() {
         localFillings,
       ] = await Promise.all([
         supabase.from("gas_types").select("id,name,color").eq("active", true).order("name"),
-        supabase.from("cylinder_sizes").select("id,name").eq("active", true).order("name"),
+        supabase
+          .from("cylinder_sizes")
+          .select("id,name,capacity,capacity_unit")
+          .eq("active", true)
+          .order("name"),
         supabase
           .from("cylinder_movements")
-          .select("type,quantity,gas_type_id,cylinder_size_id,date,extras,customer_id,condition"),
+          .select(
+            "type,quantity,gas_type_id,cylinder_size_id,date,extras,customer_id,condition",
+          ),
         supabase
           .from("customer_opening_balances")
           .select("quantity,gas_type_id,cylinder_size_id,condition"),
