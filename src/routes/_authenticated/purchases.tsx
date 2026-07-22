@@ -357,7 +357,21 @@ function PurchaseForm({ onDone }: { onDone: () => void }) {
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label className="text-xs">Purchase Rate (per {unit})</Label>
+          <Label className="text-xs">Rate Basis</Label>
+          <Select value={rateBasis} onValueChange={(v: any) => setRateBasis(v)}>
+            <SelectTrigger className="mt-1.5 h-11">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unit">Per {unit}</SelectItem>
+              <SelectItem value="m3">Per m³</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">
+            Purchase Rate (per {rateBasis === "m3" ? "m³" : unit})
+          </Label>
           <Input
             type="number"
             min={0}
@@ -367,15 +381,15 @@ function PurchaseForm({ onDone }: { onDone: () => void }) {
             className="mt-1.5 h-11"
           />
         </div>
-        <div>
-          <Label className="text-xs">Date</Label>
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="mt-1.5 h-11"
-          />
-        </div>
+      </div>
+      <div>
+        <Label className="text-xs">Date</Label>
+        <Input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="mt-1.5 h-11"
+        />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
