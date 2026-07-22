@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatDate, todayISO } from "@/lib/format";
-import { buildBulkBalances, formatM3 } from "@/lib/bulk-gas";
+import { buildBulkBalances, formatM3, gasConsumed } from "@/lib/bulk-gas";
 import { generateInsights, type Insight } from "@/lib/insights";
 import { computeCashInHand, computeTotalBankBalance } from "@/lib/finance";
 
