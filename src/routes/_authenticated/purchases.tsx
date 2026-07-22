@@ -244,7 +244,7 @@ function PurchaseForm({ onDone }: { onDone: () => void }) {
   const gasName = (lookups?.gases ?? []).find((g: any) => g.id === gas)?.name?.toLowerCase() ?? "";
   const isOxygenKg = gasName.includes("oxygen") && unit === "kg";
   const cubicMeter = toCubicMeter(quantity, unit, factor);
-  const total = (Number(quantity) || 0) * (Number(rate) || 0);
+  const total = (rateBasis === "m3" ? cubicMeter : Number(quantity) || 0) * (Number(rate) || 0);
 
   const save = useMutation({
     mutationFn: async (f: FormData) => {
