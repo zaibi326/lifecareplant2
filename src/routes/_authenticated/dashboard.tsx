@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatDate, todayISO } from "@/lib/format";
-import { buildBulkBalances, formatM3 } from "@/lib/bulk-gas";
+import { buildBulkBalances, formatM3, gasConsumed } from "@/lib/bulk-gas";
 import { generateInsights, type Insight } from "@/lib/insights";
 import { computeCashInHand, computeTotalBankBalance } from "@/lib/finance";
 
@@ -58,6 +58,8 @@ function Dashboard() {
         allExpenses,
         cashAdjustments,
         bankAccounts,
+        sizes,
+        localFillings,
       ] = await Promise.all([
 
         supabase
@@ -77,7 +79,9 @@ function Dashboard() {
         supabase.from("gas_types").select("id,name,color").eq("active", true),
         supabase
           .from("cylinder_movements")
-          .select("type,quantity,total_amount,customer_id,customers(name)"),
+          .select(
+            "type,quantity,total_amount,customer_id,gas_type_id,cylinder_size_id,condition,customers(name)",
+          ),
         supabase.from("payments").select("amount"),
         supabase.from("gas_purchases").select("gas_type_id,cubic_meter"),
         supabase.from("production").select("gas_type_id,gas_consumed"),
@@ -93,6 +97,11 @@ function Dashboard() {
         supabase.from("expenses").select("amount,account,bank_account_id"),
         supabase.from("cash_adjustments").select("amount,direction"),
         supabase.from("bank_accounts").select("id,bank_name,account_title,opening_balance"),
+        supabase
+          .from("cylinder_sizes")
+          .select("id,capacity,capacity_unit")
+          .eq("active", true),
+        supabase.from("local_fillings").select("gas_type_id,gas_consumed"),
       ]);
 
       return {
@@ -119,6 +128,8 @@ function Dashboard() {
         allExpenses: allExpenses.data ?? [],
         cashAdjustments: cashAdjustments.data ?? [],
         bankAccounts: bankAccounts.data ?? [],
+        sizes: sizes.data ?? [],
+        localFillings: localFillings.data ?? [],
       };
     },
   });
@@ -200,7 +211,39 @@ function Dashboard() {
 
 
   // Bulk gas remaining per gas type = purchased − consumed
-  const bulkBalances = buildBulkBalances(data?.purchases ?? [], data?.allProduction ?? []);
+  // Bulk gas remaining per gas type = purchased − consumed.
+  // Auto-consumption (production, local filling, delivered filled cylinders) applies ONLY to Oxygen.
+  const oxygenIds = new Set(
+    (data?.gases ?? [])
+      .filter((g: any) => /oxygen/i.test(String(g.name ?? "")))
+      .map((g: any) => g.id as string),
+  );
+  const sizeById = new Map<string, { capacity: number | null; capacity_unit: string | null }>();
+  for (const s of (data as any)?.sizes ?? [])
+    sizeById.set(s.id, { capacity: s.capacity, capacity_unit: s.capacity_unit });
+  const oxyProduction = (data?.allProduction ?? []).filter((r: any) =>
+    oxygenIds.has(r.gas_type_id),
+  );
+  const oxyLocalFillings = ((data as any)?.localFillings ?? []).filter((r: any) =>
+    oxygenIds.has(r.gas_type_id),
+  );
+  const oxyDeliveries = ((data as any)?.allMoves ?? [])
+    .filter(
+      (m: any) =>
+        m.type === "deliver" && m.condition === "filled" && oxygenIds.has(m.gas_type_id),
+    )
+    .map((m: any) => {
+      const sz = sizeById.get(m.cylinder_size_id);
+      return {
+        gas_type_id: m.gas_type_id,
+        gas_consumed: gasConsumed(sz?.capacity ?? 0, m.quantity, sz?.capacity_unit ?? "m3"),
+      };
+    });
+  const bulkBalances = buildBulkBalances(data?.purchases ?? [], [
+    ...oxyProduction,
+    ...oxyLocalFillings,
+    ...oxyDeliveries,
+  ]);
   const gasNameById = new Map<string, { name: string; color: string | null }>();
   for (const g of data?.gases ?? []) gasNameById.set(g.id, { name: g.name, color: g.color });
   const bulkRows = Array.from(bulkBalances.entries())
