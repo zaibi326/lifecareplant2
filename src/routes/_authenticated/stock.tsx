@@ -23,7 +23,7 @@ import {
 
 import { toast } from "sonner";
 import { todayISO } from "@/lib/format";
-import { buildBulkBalances, formatM3 } from "@/lib/bulk-gas";
+import { buildBulkBalances, formatM3, gasConsumed } from "@/lib/bulk-gas";
 
 const PART_KINDS = ["valve", "spindle"] as const;
 const DEFAULT_PART_SIZES = ['1"', '1.15"', '1.30"', '1.45"', '2"'];
