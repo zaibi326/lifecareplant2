@@ -149,7 +149,6 @@ function ProfitPage() {
         : null,
       outstanding,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [d, todayPnl.netProfit, monthPnl.netProfit]);
 
   return (

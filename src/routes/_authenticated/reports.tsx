@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { formatM3 } from "@/lib/bulk-gas";
+import { printDocument } from "@/lib/print";
 import {
   ResponsiveContainer,
   BarChart,
@@ -27,6 +28,7 @@ import {
   PackagePlus,
   Receipt,
   TrendingUp,
+  Printer,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/reports")({
@@ -78,11 +80,11 @@ function ReportsPage() {
     },
   });
 
-  const ms: any[] = data?.movements ?? [];
-  const ps: any[] = data?.payments ?? [];
-  const pr: any[] = data?.production ?? [];
-  const pur: any[] = data?.purchases ?? [];
-  const exp: any[] = data?.expenses ?? [];
+  const ms: any[] = useMemo(() => data?.movements ?? [], [data]);
+  const ps: any[] = useMemo(() => data?.payments ?? [], [data]);
+  const pr: any[] = useMemo(() => data?.production ?? [], [data]);
+  const pur: any[] = useMemo(() => data?.purchases ?? [], [data]);
+  const exp: any[] = useMemo(() => data?.expenses ?? [], [data]);
 
   const totals = useMemo(() => {
     const received = ms
@@ -160,6 +162,70 @@ function ReportsPage() {
       .slice(0, 10);
   }, [ms, ps]);
 
+  // Fetch company letterhead settings once for report printing.
+  const { data: company } = useQuery({
+    queryKey: ["company-settings"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("settings")
+        .select("company_name,company_address,company_phone,currency")
+        .eq("id", 1)
+        .maybeSingle();
+      return data;
+    },
+  });
+  const currency = company?.currency ?? "Rs";
+
+  const printReport = () => {
+    const fmt = (v: number) => formatCurrency(v, currency);
+    const expenseRows =
+      expenseBreakdown
+        .map(([cat, amt]) => `<tr><td>${cat}</td><td class="right">${fmt(amt)}</td></tr>`)
+        .join("") || `<tr><td colspan="2" class="muted">No expenses</td></tr>`;
+    const customerRows =
+      topCustomers
+        .map(
+          (c, i) =>
+            `<tr><td>${i + 1}</td><td>${c.name}</td><td class="right">${c.qty}</td><td class="right">${fmt(c.paid)}</td><td class="right">${fmt(c.amount)}</td></tr>`,
+        )
+        .join("") || `<tr><td colspan="5" class="muted">No data</td></tr>`;
+
+    const body = `
+      <h2>Summary — ${formatDate(from)} to ${formatDate(to)}</h2>
+      <table>
+        <tbody>
+          <tr><td>Cylinders Received</td><td class="right">${totals.received.toLocaleString()}</td></tr>
+          <tr><td>Cylinders Delivered</td><td class="right">${totals.delivered.toLocaleString()}</td></tr>
+          <tr><td>Cylinders Produced</td><td class="right">${totals.produced.toLocaleString()}</td></tr>
+        </tbody>
+      </table>
+      <h2>Profit &amp; Loss</h2>
+      <table>
+        <tbody>
+          <tr><td>Revenue (Billed)</td><td class="right">${fmt(totals.billed)}</td></tr>
+          <tr><td>Collected</td><td class="right">${fmt(totals.collected)}</td></tr>
+          <tr><td>Gas Purchases</td><td class="right">− ${fmt(totals.purchased)}</td></tr>
+          <tr><td>Operating Expenses</td><td class="right">− ${fmt(totals.expensed)}</td></tr>
+        </tbody>
+      </table>
+      <div class="totals"><div><div class="label">Net Profit / Loss</div><div class="val">${fmt(totals.profit)}</div></div></div>
+      <h2>Expenses by Category</h2>
+      <table><thead><tr><th>Category</th><th class="right">Amount</th></tr></thead><tbody>${expenseRows}</tbody></table>
+      <h2>Top Customers</h2>
+      <table><thead><tr><th>#</th><th>Customer</th><th class="right">Cyl</th><th class="right">Paid</th><th class="right">Billed</th></tr></thead><tbody>${customerRows}</tbody></table>`;
+
+    printDocument({
+      company: {
+        name: company?.company_name ?? "Life Care Plant",
+        address: company?.company_address ?? null,
+        phone: company?.company_phone ?? null,
+      },
+      docTitle: `Report — ${from} to ${to}`,
+      badge: "REPORT",
+      bodyHTML: body,
+    });
+  };
+
   const exportCsv = () => {
     const rows = [
       ["FINANCIAL SUMMARY", `${from} to ${to}`],
@@ -215,9 +281,14 @@ function ReportsPage() {
             {formatDate(from)} → {formatDate(to)}
           </p>
         </div>
-        <Button variant="outline" onClick={exportCsv} className="gap-2">
-          <Download className="size-4" /> Export CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={printReport} className="gap-2">
+            <Printer className="size-4" /> Print
+          </Button>
+          <Button variant="outline" onClick={exportCsv} className="gap-2">
+            <Download className="size-4" /> Export CSV
+          </Button>
+        </div>
       </header>
 
       <Card className="p-4 grid grid-cols-2 md:grid-cols-3 gap-3 items-end">

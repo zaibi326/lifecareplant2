@@ -176,7 +176,9 @@ function CashPage() {
           <Card key={i} className="p-4 flex items-center gap-3">
             <div
               className={`size-10 rounded-lg grid place-items-center ${
-                r.kind === "in" ? "bg-success/15 text-success" : "bg-destructive/10 text-destructive"
+                r.kind === "in"
+                  ? "bg-success/15 text-success"
+                  : "bg-destructive/10 text-destructive"
               }`}
             >
               {r.kind === "in" ? (

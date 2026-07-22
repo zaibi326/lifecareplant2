@@ -81,7 +81,11 @@ export function computeCashInHand(i: CashInput): {
 //   opening + bank customer payments − bank supplier payments − bank expenses
 // Rows carry bank_account_id so we can split per account.
 // ============================================================
-export type BankRow = { amount: number | null; account?: string | null; bank_account_id?: string | null };
+export type BankRow = {
+  amount: number | null;
+  account?: string | null;
+  bank_account_id?: string | null;
+};
 
 export type BankAccount = {
   id: string;
@@ -99,9 +103,7 @@ export function computeBankBalance(
 ): { inflow: number; outflow: number; balance: number } {
   const forAcct = (r: BankRow) =>
     isBank(r.account) && (r.bank_account_id == null || r.bank_account_id === account.id);
-  const inflow = customerPayments
-    .filter(forAcct)
-    .reduce((a, r) => a + Number(r.amount ?? 0), 0);
+  const inflow = customerPayments.filter(forAcct).reduce((a, r) => a + Number(r.amount ?? 0), 0);
   const outflow =
     supplierPayments.filter(forAcct).reduce((a, r) => a + Number(r.amount ?? 0), 0) +
     expenses.filter(forAcct).reduce((a, r) => a + Number(r.amount ?? 0), 0);
@@ -122,7 +124,9 @@ export function computeTotalBankBalance(
     .filter((r) => isBank(r.account))
     .reduce((a, r) => a + Number(r.amount ?? 0), 0);
   const outflow =
-    supplierPayments.filter((r) => isBank(r.account)).reduce((a, r) => a + Number(r.amount ?? 0), 0) +
+    supplierPayments
+      .filter((r) => isBank(r.account))
+      .reduce((a, r) => a + Number(r.amount ?? 0), 0) +
     expenses.filter((r) => isBank(r.account)).reduce((a, r) => a + Number(r.amount ?? 0), 0);
   return opening + inflow - outflow;
 }
@@ -147,7 +151,13 @@ export type LedgerEntry = {
 export function buildLedger(
   opening: number,
   entries: Omit<LedgerEntry, "running">[],
-): { rows: LedgerEntry[]; opening: number; closing: number; totalCharge: number; totalPayment: number } {
+): {
+  rows: LedgerEntry[];
+  opening: number;
+  closing: number;
+  totalCharge: number;
+  totalPayment: number;
+} {
   const sorted = [...entries].sort((a, b) => {
     const ak = (a.ts ?? a.date) || "";
     const bk = (b.ts ?? b.date) || "";

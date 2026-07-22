@@ -11,7 +11,59 @@ export function printHTML(title: string, body: string) {
     .totals .label{color:#64748b} .totals .val{font-weight:700}
     .head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;border-bottom:2px solid #0f172a;padding-bottom:16px}
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#0f172a;color:#fff;font-size:11px}
+    .foot{margin-top:32px;padding-top:12px;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:10px;text-align:center}
     @media print{body{padding:0}}
   </style></head><body>${body}<script>window.onload=()=>{setTimeout(()=>window.print(),200)}</script></body></html>`);
   w.document.close();
+}
+
+export type CompanyInfo = {
+  name?: string | null;
+  address?: string | null;
+  phone?: string | null;
+};
+
+// Escape untrusted values before embedding in the print HTML.
+function esc(v: unknown): string {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/**
+ * Print a document with a company letterhead. Wraps `printHTML` and prepends a
+ * standard header (company name/address/phone) + a document badge, and appends
+ * a "Powered by Braintech Automation" footer. The caller supplies the body
+ * (usually one or more <h2> sections + <table>s and a .totals block).
+ */
+export function printDocument(opts: {
+  company: CompanyInfo;
+  docTitle: string; // window/document title
+  badge?: string; // e.g. "STATEMENT", "REPORT", "INVOICE"
+  rightBlockHTML?: string; // party info shown top-right (already-formed HTML)
+  bodyHTML: string; // main content
+  footerNote?: string;
+}) {
+  const companyName = esc(opts.company.name || "Life Care Plant");
+  const address = opts.company.address
+    ? `<div class="muted">${esc(opts.company.address)}</div>`
+    : "";
+  const phone = opts.company.phone ? `<div class="muted">${esc(opts.company.phone)}</div>` : "";
+  const badge = opts.badge ? `<span class="badge">${esc(opts.badge)}</span>` : "";
+  const right = opts.rightBlockHTML
+    ? `<div style="text-align:right">${badge}${opts.rightBlockHTML}</div>`
+    : `<div style="text-align:right">${badge}</div>`;
+  const printedOn = new Date().toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const footer = `<div class="foot">Printed ${printedOn}${opts.footerNote ? ` • ${esc(opts.footerNote)}` : ""} • Powered by Braintech Automation</div>`;
+  printHTML(
+    opts.docTitle,
+    `<div class="head"><div><h1>${companyName}</h1>${address}${phone}</div>${right}</div>${opts.bodyHTML}${footer}`,
+  );
 }

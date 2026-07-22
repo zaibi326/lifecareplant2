@@ -25,8 +25,8 @@ import {
   ArrowRightLeft,
   Coins,
   Landmark,
+  Sparkles,
 } from "lucide-react";
-
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -57,6 +57,7 @@ const navItems = [
   { to: "/employees", label: "Employees", icon: UserCog },
 
   { to: "/reports", label: "Reports", icon: BarChart3 },
+  { to: "/assistant", label: "AI Assistant", icon: Sparkles },
   { to: "/profit", label: "Profit & Loss", icon: TrendingUp },
   { to: "/audit-log", label: "Audit Log", icon: History },
   { to: "/backup", label: "Backup", icon: DatabaseBackup },

@@ -37,8 +37,12 @@ import {
   Pencil,
   Trash2,
   History,
+  Printer,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { printDocument } from "@/lib/print";
+import { formatSupplierStatement, openWhatsApp, type StatementLine } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/_authenticated/suppliers")({
   head: () => ({ meta: [{ title: "Suppliers — Life Care Plant" }] }),
@@ -314,18 +318,26 @@ function SupplierHistoryDialog({
     queryKey: ["supplier-ledger", supplierId],
     enabled: !!supplierId,
     queryFn: async () => {
-      const [gp, cp, sp] = await Promise.all([
+      const [gp, cp, sp, sup, settings] = await Promise.all([
         supabase
           .from("gas_purchases")
           .select("*,gas_types(name,color)")
           .eq("supplier_id", supplierId!),
         supabase.from("cylinder_purchases").select("*").eq("supplier_id", supplierId!),
         supabase.from("supplier_payments").select("*").eq("supplier_id", supplierId!),
+        supabase.from("suppliers").select("name,phone,address").eq("id", supplierId!).maybeSingle(),
+        supabase
+          .from("settings")
+          .select("company_name,company_address,company_phone,currency")
+          .eq("id", 1)
+          .maybeSingle(),
       ]);
       return {
         gasPurchases: gp.data ?? [],
         cylinderPurchases: cp.data ?? [],
         payments: sp.data ?? [],
+        supplier: sup.data ?? null,
+        settings: settings.data ?? null,
       };
     },
   });
@@ -388,12 +400,87 @@ function SupplierHistoryDialog({
     };
   }, [data]);
 
+  const company = {
+    name: data?.settings?.company_name ?? "Life Care Plant",
+    address: data?.settings?.company_address ?? null,
+    phone: data?.settings?.company_phone ?? null,
+  };
+  const currency = data?.settings?.currency ?? "Rs";
+  const supplierName = data?.supplier?.name ?? "Supplier";
+  const supplierPhone = data?.supplier?.phone ?? null;
+
+  // Recent activity for share/print (newest first, already reversed in ledger.rows).
+  const statementLines: StatementLine[] = ledger.rows.slice(0, 8).map((r) => ({
+    date: r.date,
+    title: r.title,
+    detail: r.detail,
+    amount: r.payment > 0 ? -r.payment : r.charge,
+  }));
+
+  const handleWhatsApp = () => {
+    const text = formatSupplierStatement({
+      company: company.name,
+      companyPhone: company.phone,
+      currency,
+      supplierName,
+      purchases: ledger.totalCharge,
+      paid: ledger.totalPayment,
+      outstanding: ledger.outstanding,
+      lines: statementLines,
+    });
+    openWhatsApp(supplierPhone, text);
+  };
+
+  const handlePrint = () => {
+    const rowsHtml = ledger.rows
+      .map(
+        (r) =>
+          `<tr><td>${formatDate(r.date)}</td><td>${r.title}</td><td>${r.detail ?? ""}</td>` +
+          `<td class="right">${r.charge ? formatCurrency(r.charge, currency) : ""}</td>` +
+          `<td class="right">${r.payment ? formatCurrency(r.payment, currency) : ""}</td>` +
+          `<td class="right">${formatCurrency(r.running, currency)}</td></tr>`,
+      )
+      .join("");
+    const body = `
+      <h2>Supplier Statement</h2>
+      <table>
+        <thead><tr><th>Date</th><th>Description</th><th>Detail</th>
+        <th class="right">Purchase</th><th class="right">Payment</th><th class="right">Balance</th></tr></thead>
+        <tbody>${rowsHtml || '<tr><td colspan="6">No activity recorded.</td></tr>'}</tbody>
+      </table>
+      <div class="totals">
+        <div><div class="label">Purchases</div><div class="val">${formatCurrency(ledger.totalCharge, currency)}</div></div>
+        <div><div class="label">Paid</div><div class="val">${formatCurrency(ledger.totalPayment, currency)}</div></div>
+        <div><div class="label">Outstanding</div><div class="val">${formatCurrency(ledger.outstanding, currency)}</div></div>
+      </div>`;
+    printDocument({
+      company,
+      docTitle: `Supplier Statement — ${supplierName}`,
+      badge: "STATEMENT",
+      rightBlockHTML: `<div style="margin-top:8px"><strong>${supplierName}</strong>${supplierPhone ? `<div class="muted">${supplierPhone}</div>` : ""}</div>`,
+      bodyHTML: body,
+    });
+  };
+
   return (
     <Dialog open={!!supplierId} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Supplier Ledger</DialogTitle>
         </DialogHeader>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5 flex-1" onClick={handlePrint}>
+            <Printer className="size-4" /> Print
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 flex-1 text-success"
+            onClick={handleWhatsApp}
+          >
+            <MessageCircle className="size-4" /> WhatsApp
+          </Button>
+        </div>
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded-lg border p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">

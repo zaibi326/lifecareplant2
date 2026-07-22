@@ -39,6 +39,8 @@ import {
   Trash2,
   Pencil,
   MoreVertical,
+  Printer,
+  MessageCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -47,6 +49,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { printDocument } from "@/lib/print";
+import { formatCustomerStatement, openWhatsApp } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/_authenticated/customers")({
   head: () => ({ meta: [{ title: "Customers — Life Care Plant" }] }),
@@ -318,6 +322,56 @@ function CustomersPage() {
       notes: c.notes ?? "",
     });
     setOpen(true);
+  };
+
+  // Fetch company letterhead settings once for statement print/share.
+  const { data: company } = useQuery({
+    queryKey: ["company-settings"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("settings")
+        .select("company_name,company_address,company_phone,currency")
+        .eq("id", 1)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const companyInfo = {
+    name: company?.company_name ?? "Life Care Plant",
+    address: company?.company_address ?? null,
+    phone: company?.company_phone ?? null,
+  };
+  const currency = company?.currency ?? "Rs";
+
+  const shareStatement = (c: any) => {
+    const text = formatCustomerStatement({
+      company: companyInfo.name,
+      companyPhone: companyInfo.phone,
+      currency,
+      customerName: c.name,
+      cylindersWithCustomer: c.balance.out,
+      outstanding: c.balance.due,
+    });
+    if (!c.phone) toast.info("No phone on file — opening WhatsApp without a recipient.");
+    openWhatsApp(c.phone, text);
+  };
+
+  const printStatement = (c: any) => {
+    const body = `
+      <h2>Account Summary</h2>
+      <div class="totals">
+        <div><div class="label">Cylinders With Customer</div><div class="val">${c.balance.out}</div></div>
+        <div><div class="label">Outstanding Due</div><div class="val">${formatCurrency(c.balance.due, currency)}</div></div>
+      </div>
+      <p class="muted" style="margin-top:16px">For a detailed activity ledger, open the customer profile.</p>`;
+    printDocument({
+      company: companyInfo,
+      docTitle: `Statement — ${c.name}`,
+      badge: "STATEMENT",
+      rightBlockHTML: `<div style="margin-top:8px"><strong>${c.name}</strong>${c.phone ? `<div class="muted">${c.phone}</div>` : ""}${c.address ? `<div class="muted">${c.address}</div>` : ""}</div>`,
+      bodyHTML: body,
+    });
   };
 
   return (
@@ -607,6 +661,15 @@ function CustomersPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => printStatement(c)} className="gap-2">
+                  <Printer className="size-4" /> Print statement
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => shareStatement(c)}
+                  className="gap-2 text-success focus:text-success"
+                >
+                  <MessageCircle className="size-4" /> WhatsApp statement
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => openEdit(c)} className="gap-2">
                   <Pencil className="size-4" /> Edit
                 </DropdownMenuItem>

@@ -37,7 +37,6 @@ import { Plus, Receipt, MoreVertical, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/expenses")({
-
   head: () => ({ meta: [{ title: "Expenses — Life Care Plant" }] }),
   component: ExpensesPage,
 });
@@ -356,5 +355,3 @@ function ExpenseForm({ onDone }: { onDone: () => void }) {
     </form>
   );
 }
-
-

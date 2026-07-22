@@ -23,6 +23,10 @@ export type InsightInput = {
   monthExpenses: number; // expenses this calendar month
   bulkLow: { name: string; remaining: number }[]; // gas types at/below zero
   topDebtors: { name: string; due: number }[];
+  // Part 3 business intelligence (all optional — omitted when data is absent).
+  bestCustomer?: { name: string; amount: number } | null; // highest billed this period
+  bestSellingGas?: { name: string; qty: number } | null; // most delivered/filled gas
+  topVehicleExpense?: { name: string; total: number } | null; // highest delivery expense
 };
 
 const currency = (n: number) => "Rs " + Math.round(n).toLocaleString();
@@ -120,6 +124,36 @@ export function generateInsights(i: InsightInput): Insight[] {
           "A large share of the fleet is idle in the plant. Push deliveries to improve utilisation.",
       });
     }
+  }
+
+  // Best customer this period — recognise the top revenue account.
+  if (i.bestCustomer && i.bestCustomer.amount > 0) {
+    out.push({
+      id: "best-customer",
+      tone: "positive",
+      title: `Top customer: ${i.bestCustomer.name}`,
+      detail: `${i.bestCustomer.name} accounts for ${currency(i.bestCustomer.amount)} of billing this month. Keep the relationship warm.`,
+    });
+  }
+
+  // Best-selling gas — helps stocking decisions.
+  if (i.bestSellingGas && i.bestSellingGas.qty > 0) {
+    out.push({
+      id: "best-gas",
+      tone: "info",
+      title: `Best seller: ${i.bestSellingGas.name}`,
+      detail: `${i.bestSellingGas.name} leads with ${i.bestSellingGas.qty.toLocaleString()} cylinders moved this month. Keep it well stocked.`,
+    });
+  }
+
+  // Highest vehicle expense — cost-control signal.
+  if (i.topVehicleExpense && i.topVehicleExpense.total > 0) {
+    out.push({
+      id: "vehicle-expense",
+      tone: "warning",
+      title: `Highest vehicle cost: ${i.topVehicleExpense.name}`,
+      detail: `${i.topVehicleExpense.name} has run up ${currency(i.topVehicleExpense.total)} in delivery expenses this month. Review fuel and maintenance.`,
+    });
   }
 
   // Priority order: critical → warning → positive → info.

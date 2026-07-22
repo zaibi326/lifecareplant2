@@ -17,7 +17,6 @@ import {
   Info,
 } from "lucide-react";
 
-
 import {
   ResponsiveContainer,
   AreaChart,
@@ -59,7 +58,6 @@ function Dashboard() {
         cashAdjustments,
         bankAccounts,
       ] = await Promise.all([
-
         supabase
           .from("cylinder_movements")
           .select(
@@ -122,7 +120,6 @@ function Dashboard() {
       };
     },
   });
-
 
   const today = todayISO();
   const movs = data?.movements ?? [];
@@ -198,7 +195,6 @@ function Dashboard() {
     (data?.allExpenses ?? []) as any,
   );
 
-
   // Bulk gas remaining per gas type = purchased − consumed
   const bulkBalances = buildBulkBalances(data?.purchases ?? [], data?.allProduction ?? []);
   const gasNameById = new Map<string, { name: string; color: string | null }>();
@@ -228,6 +224,32 @@ function Dashboard() {
     .sort((a, b) => b.due - a.due)
     .slice(0, 3);
 
+  // Best customer this month (by billed deliveries).
+  const monthCustMap = new Map<string, { name: string; amount: number }>();
+  for (const m of all) {
+    if (m.type !== "deliver" || !m.customer_id) continue;
+    const e = monthCustMap.get(m.customer_id) ?? {
+      name: m.customers?.name ?? "Customer",
+      amount: 0,
+    };
+    e.amount += Number(m.total_amount ?? 0);
+    monthCustMap.set(m.customer_id, e);
+  }
+  const bestCustomer =
+    Array.from(monthCustMap.values()).sort((a, b) => b.amount - a.amount)[0] ?? null;
+
+  // Best-selling gas (by delivered quantity across recent movements).
+  const gasQtyMap = new Map<string, number>();
+  for (const m of movs) {
+    if (m.type !== "deliver") continue;
+    const name = (m as any).gas_types?.name ?? "Gas";
+    gasQtyMap.set(name, (gasQtyMap.get(name) ?? 0) + Number(m.quantity ?? 0));
+  }
+  const bestSellingGasEntry = Array.from(gasQtyMap.entries()).sort((a, b) => b[1] - a[1])[0];
+  const bestSellingGas = bestSellingGasEntry
+    ? { name: bestSellingGasEntry[0], qty: bestSellingGasEntry[1] }
+    : null;
+
   const insights = generateInsights({
     plantStock,
     withCustomers,
@@ -243,6 +265,8 @@ function Dashboard() {
       .filter((b) => b.remaining <= 0)
       .map((b) => ({ name: b.name, remaining: b.remaining })),
     topDebtors,
+    bestCustomer,
+    bestSellingGas,
   });
 
   // Build 14-day chart
@@ -337,7 +361,6 @@ function Dashboard() {
           tone={bankBalance < 0 ? "warning" : "default"}
         />
       </section>
-
 
       {insights.length > 0 && (
         <section className="bg-card border rounded-2xl p-5">
