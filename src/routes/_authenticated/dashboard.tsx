@@ -95,6 +95,11 @@ function Dashboard() {
         supabase.from("expenses").select("amount,account,bank_account_id"),
         supabase.from("cash_adjustments").select("amount,direction"),
         supabase.from("bank_accounts").select("id,bank_name,account_title,opening_balance"),
+        supabase
+          .from("cylinder_sizes")
+          .select("id,capacity,capacity_unit")
+          .eq("active", true),
+        supabase.from("local_fillings").select("gas_type_id,gas_consumed"),
       ]);
 
       return {
