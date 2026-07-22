@@ -77,7 +77,9 @@ function Dashboard() {
         supabase.from("gas_types").select("id,name,color").eq("active", true),
         supabase
           .from("cylinder_movements")
-          .select("type,quantity,total_amount,customer_id,customers(name)"),
+          .select(
+            "type,quantity,total_amount,customer_id,gas_type_id,cylinder_size_id,condition,customers(name)",
+          ),
         supabase.from("payments").select("amount"),
         supabase.from("gas_purchases").select("gas_type_id,cubic_meter"),
         supabase.from("production").select("gas_type_id,gas_consumed"),
