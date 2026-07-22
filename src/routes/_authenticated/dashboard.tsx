@@ -58,6 +58,8 @@ function Dashboard() {
         allExpenses,
         cashAdjustments,
         bankAccounts,
+        sizes,
+        localFillings,
       ] = await Promise.all([
 
         supabase
