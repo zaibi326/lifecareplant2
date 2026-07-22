@@ -1305,27 +1305,36 @@ export type Database = {
         Row: {
           active: boolean
           address: string | null
+          contact_person: string | null
           created_at: string
           id: string
           name: string
+          notes: string | null
+          ntn_gst: string | null
           phone: string | null
           updated_at: string
         }
         Insert: {
           active?: boolean
           address?: string | null
+          contact_person?: string | null
           created_at?: string
           id?: string
           name: string
+          notes?: string | null
+          ntn_gst?: string | null
           phone?: string | null
           updated_at?: string
         }
         Update: {
           active?: boolean
           address?: string | null
+          contact_person?: string | null
           created_at?: string
           id?: string
           name?: string
+          notes?: string | null
+          ntn_gst?: string | null
           phone?: string | null
           updated_at?: string
         }
