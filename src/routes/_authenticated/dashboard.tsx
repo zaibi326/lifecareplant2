@@ -128,6 +128,8 @@ function Dashboard() {
         allExpenses: allExpenses.data ?? [],
         cashAdjustments: cashAdjustments.data ?? [],
         bankAccounts: bankAccounts.data ?? [],
+        sizes: sizes.data ?? [],
+        localFillings: localFillings.data ?? [],
       };
     },
   });
