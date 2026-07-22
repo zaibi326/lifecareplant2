@@ -221,6 +221,7 @@ function PurchaseForm({ onDone }: { onDone: () => void }) {
   const [unit, setUnit] = useState<"m3" | "kg">("m3");
   const [quantity, setQuantity] = useState<number>(0);
   const [rate, setRate] = useState<number>(0);
+  const [rateBasis, setRateBasis] = useState<"unit" | "m3">("unit");
   const [date, setDate] = useState(todayISO());
 
   const { data: lookups } = useQuery({
