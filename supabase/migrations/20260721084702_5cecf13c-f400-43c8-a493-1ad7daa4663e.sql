@@ -1,0 +1,1 @@
+ALTER TABLE public.supplier_payments ADD COLUMN IF NOT EXISTS payment_type TEXT;

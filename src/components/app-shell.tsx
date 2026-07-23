@@ -26,6 +26,7 @@ import {
   Coins,
   Landmark,
   Sparkles,
+  ChevronDown,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const navItems = [
+type NavLeaf = { to: string; label: string; icon: any };
+type NavGroup = { label: string; icon: any; children: NavLeaf[] };
+type NavEntry = NavLeaf | NavGroup;
+
+const navItems: NavEntry[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/suppliers", label: "Suppliers", icon: Truck },
@@ -46,23 +51,33 @@ const navItems = [
   { to: "/cylinder-exchange", label: "Cylinder Exchange", icon: ArrowRightLeft },
   { to: "/cylinder-purchases", label: "New Cylinders", icon: PackagePlus },
   { to: "/stock", label: "Stock", icon: Package },
-  { to: "/payments", label: "Customer Payments", icon: Wallet },
-  { to: "/supplier-payments", label: "Supplier Payments", icon: Wallet },
+  {
+    label: "Payments",
+    icon: Wallet,
+    children: [
+      { to: "/payments", label: "Customer Payments", icon: Wallet },
+      { to: "/supplier-payments", label: "Supplier Payments", icon: Wallet },
+    ],
+  },
   { to: "/cash", label: "Cash in Hand", icon: Coins },
   { to: "/bank", label: "Bank", icon: Landmark },
   { to: "/expenses", label: "Expenses", icon: Receipt },
-  { to: "/vehicles", label: "Vehicles", icon: Car },
-
-  { to: "/drivers", label: "Drivers", icon: UserCog },
-  { to: "/employees", label: "Employees", icon: UserCog },
-
+  {
+    label: "Fleet & Staff",
+    icon: Car,
+    children: [
+      { to: "/vehicles", label: "Vehicles", icon: Car },
+      { to: "/drivers", label: "Drivers", icon: UserCog },
+      { to: "/employees", label: "Employees", icon: UserCog },
+    ],
+  },
   { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/assistant", label: "AI Assistant", icon: Sparkles },
   { to: "/profit", label: "Profit & Loss", icon: TrendingUp },
   { to: "/audit-log", label: "Audit Log", icon: History },
   { to: "/backup", label: "Backup", icon: DatabaseBackup },
   { to: "/settings", label: "Settings", icon: Settings },
-] as const;
+];
 
 const mobileItems = [
   { to: "/dashboard", label: "Home", icon: LayoutDashboard },
@@ -103,8 +118,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
+            if ("children" in item) {
+              return <NavGroupItem key={item.label} item={item} isActive={isActive} />;
+            }
             const Icon = item.icon;
             const active = isActive(item.to);
             return (
@@ -277,5 +295,57 @@ function QuickAction({
         <div className="text-[11px] opacity-80">{desc}</div>
       </div>
     </button>
+  );
+}
+
+function NavGroupItem({
+  item,
+  isActive,
+}: {
+  item: { label: string; icon: any; children: { to: string; label: string; icon: any }[] };
+  isActive: (to: string) => boolean;
+}) {
+  const hasActive = item.children.some((c) => isActive(c.to));
+  const [open, setOpen] = useState(hasActive);
+  useEffect(() => {
+    if (hasActive) setOpen(true);
+  }, [hasActive]);
+  const Icon = item.icon;
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+          hasActive ? "text-brand" : "text-foreground hover:bg-muted"
+        }`}
+      >
+        <Icon className="size-4" />
+        <span className="flex-1 text-left">{item.label}</span>
+        <ChevronDown className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="ml-4 mt-1 space-y-1 border-l pl-2">
+          {item.children.map((c) => {
+            const CIcon = c.icon;
+            const active = isActive(c.to);
+            return (
+              <Link
+                key={c.to}
+                to={c.to}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-brand text-brand-foreground shadow-sm"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                <CIcon className="size-4" />
+                {c.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

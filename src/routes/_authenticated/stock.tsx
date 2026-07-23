@@ -23,7 +23,7 @@ import {
 
 import { toast } from "sonner";
 import { todayISO } from "@/lib/format";
-import { buildBulkBalances, formatM3 } from "@/lib/bulk-gas";
+import { buildBulkBalances, formatM3, gasConsumed } from "@/lib/bulk-gas";
 
 const PART_KINDS = ["valve", "spindle"] as const;
 const DEFAULT_PART_SIZES = ['1"', '1.15"', '1.30"', '1.45"', '2"'];
@@ -54,7 +54,11 @@ function StockPage() {
         localFillings,
       ] = await Promise.all([
         supabase.from("gas_types").select("id,name,color").eq("active", true).order("name"),
-        supabase.from("cylinder_sizes").select("id,name").eq("active", true).order("name"),
+        supabase
+          .from("cylinder_sizes")
+          .select("id,name,capacity,capacity_unit")
+          .eq("active", true)
+          .order("name"),
         supabase
           .from("cylinder_movements")
           .select("type,quantity,gas_type_id,cylinder_size_id,date,extras,customer_id,condition"),
@@ -240,10 +244,36 @@ function StockPage() {
     { filled: 0, empty: 0, unknown: 0, total: 0 },
   );
 
-  // Bulk gas inventory = purchased − consumed (m³) per gas type
+  // Bulk gas inventory = purchased − consumed (m³) per gas type.
+  // Auto-consumption (local filling + delivered filled cylinders) applies ONLY to Oxygen.
+  const oxygenIds = new Set(
+    (data?.gases ?? [])
+      .filter((g: any) => /oxygen/i.test(String(g.name ?? "")))
+      .map((g: any) => g.id as string),
+  );
+  const sizeById = new Map<string, { capacity: number | null; capacity_unit: string | null }>();
+  for (const s of data?.sizes ?? [])
+    sizeById.set(s.id, { capacity: (s as any).capacity, capacity_unit: (s as any).capacity_unit });
 
-  // Local filling also consumes bulk gas (same shape as production consumption rows).
-  const bulkConsumers = [...(data?.allProduction ?? []), ...(data?.localFillings ?? [])];
+  const oxyProduction = (data?.allProduction ?? []).filter((r: any) =>
+    oxygenIds.has(r.gas_type_id),
+  );
+  const oxyLocalFillings = (data?.localFillings ?? []).filter((r: any) =>
+    oxygenIds.has(r.gas_type_id),
+  );
+  const oxyDeliveries = (data?.movements ?? [])
+    .filter(
+      (m: any) => m.type === "deliver" && m.condition === "filled" && oxygenIds.has(m.gas_type_id),
+    )
+    .map((m: any) => {
+      const sz = sizeById.get(m.cylinder_size_id);
+      return {
+        gas_type_id: m.gas_type_id,
+        gas_consumed: gasConsumed(sz?.capacity ?? 0, m.quantity, sz?.capacity_unit ?? "m3"),
+      };
+    });
+
+  const bulkConsumers = [...oxyProduction, ...oxyLocalFillings, ...oxyDeliveries];
   const bulkBalances = buildBulkBalances(data?.purchases ?? [], bulkConsumers);
 
   const gasInfoById = new Map<string, { name: string; color: string | null }>();
