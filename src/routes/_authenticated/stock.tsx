@@ -245,18 +245,20 @@ function StockPage() {
   );
 
   // Bulk gas inventory = purchased − consumed (m³) per gas type.
-  // Auto-consumption (production, local filling, delivered filled cylinders) applies to ALL gases,
-  // using each cylinder size's cubic value.
+  // Auto-consumption (production, local filling, delivered filled cylinders) applies to OXYGEN only.
   const sizeById = new Map<string, { capacity: number | null; capacity_unit: string | null }>();
   for (const s of data?.sizes ?? [])
     sizeById.set(s.id, { capacity: (s as any).capacity, capacity_unit: (s as any).capacity_unit });
 
-  const allProduction = (data?.allProduction ?? []) as any[];
-  const allLocalFillings = ((data?.localFillings ?? []) as any[]).filter(
-    (r: any) => r.gas_type_id,
+  const oxygenGasIds = new Set(
+    (data?.gases ?? []).filter((g: any) => /oxygen/i.test(g.name)).map((g: any) => g.id),
   );
+  const isOxygen = (gasId: string | null | undefined) => !!gasId && oxygenGasIds.has(gasId);
+
+  const allProduction = ((data?.allProduction ?? []) as any[]).filter((r: any) => isOxygen(r.gas_type_id));
+  const allLocalFillings = ((data?.localFillings ?? []) as any[]).filter((r: any) => isOxygen(r.gas_type_id));
   const allDeliveries = ((data?.movements ?? []) as any[])
-    .filter((m: any) => m.type === "deliver" && m.condition === "filled" && m.gas_type_id)
+    .filter((m: any) => m.type === "deliver" && m.condition === "filled" && isOxygen(m.gas_type_id))
     .map((m: any) => {
       const sz = sizeById.get(m.cylinder_size_id);
       return {
@@ -266,6 +268,7 @@ function StockPage() {
     });
 
   const bulkConsumers = [...allProduction, ...allLocalFillings, ...allDeliveries];
+
   const bulkBalances = buildBulkBalances(data?.purchases ?? [], bulkConsumers);
 
   const gasInfoById = new Map<string, { name: string; color: string | null }>();
