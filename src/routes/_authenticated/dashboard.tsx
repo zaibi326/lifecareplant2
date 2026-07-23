@@ -203,27 +203,18 @@ function Dashboard() {
     (data?.allExpenses ?? []) as any,
   );
 
-  // Bulk gas remaining per gas type = purchased − consumed
   // Bulk gas remaining per gas type = purchased − consumed.
-  // Auto-consumption (production, local filling, delivered filled cylinders) applies ONLY to Oxygen.
-  const oxygenIds = new Set(
-    (data?.gases ?? [])
-      .filter((g: any) => /oxygen/i.test(String(g.name ?? "")))
-      .map((g: any) => g.id as string),
-  );
+  // Auto-consumption (production, local filling, delivered filled cylinders) applies to ALL gases,
+  // using each cylinder size's cubic value.
   const sizeById = new Map<string, { capacity: number | null; capacity_unit: string | null }>();
   for (const s of (data as any)?.sizes ?? [])
     sizeById.set(s.id, { capacity: s.capacity, capacity_unit: s.capacity_unit });
-  const oxyProduction = (data?.allProduction ?? []).filter((r: any) =>
-    oxygenIds.has(r.gas_type_id),
+  const allProduction = (data?.allProduction ?? []) as any[];
+  const allLocalFillings = (((data as any)?.localFillings ?? []) as any[]).filter(
+    (r: any) => r.gas_type_id,
   );
-  const oxyLocalFillings = ((data as any)?.localFillings ?? []).filter((r: any) =>
-    oxygenIds.has(r.gas_type_id),
-  );
-  const oxyDeliveries = ((data as any)?.allMoves ?? [])
-    .filter(
-      (m: any) => m.type === "deliver" && m.condition === "filled" && oxygenIds.has(m.gas_type_id),
-    )
+  const allDeliveries = (((data as any)?.allMoves ?? []) as any[])
+    .filter((m: any) => m.type === "deliver" && m.condition === "filled" && m.gas_type_id)
     .map((m: any) => {
       const sz = sizeById.get(m.cylinder_size_id);
       return {
@@ -232,9 +223,9 @@ function Dashboard() {
       };
     });
   const bulkBalances = buildBulkBalances(data?.purchases ?? [], [
-    ...oxyProduction,
-    ...oxyLocalFillings,
-    ...oxyDeliveries,
+    ...allProduction,
+    ...allLocalFillings,
+    ...allDeliveries,
   ]);
   const gasNameById = new Map<string, { name: string; color: string | null }>();
   for (const g of data?.gases ?? []) gasNameById.set(g.id, { name: g.name, color: g.color });
