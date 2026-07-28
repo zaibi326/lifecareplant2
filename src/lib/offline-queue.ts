@@ -94,22 +94,41 @@ export async function flushQueue(): Promise<{ ok: number; failed: number }> {
     const items = await listQueue();
     for (const item of items) {
       try {
+        // Safe insert/upsert with conflict recovery
         const { error } = await supabase.from(item.table as any).insert(item.payload as any);
-        if (error) throw error;
+        if (error) {
+          // If conflict (e.g. duplicate reference/id), try upserting safely so data is preserved
+          if (error.code === "23505" || /duplicate/i.test(error.message)) {
+            console.warn("[outbox] Conflict detected, attempting upsert recovery:", item.id);
+            const { error: upsertErr } = await supabase
+              .from(item.table as any)
+              .upsert(item.payload as any);
+            if (upsertErr) throw upsertErr;
+          } else {
+            throw error;
+          }
+        }
         await removeItem(item.id);
         ok++;
-      } catch (e) {
-        console.warn("[outbox] flush failed", item.id, e);
+      } catch (e: any) {
+        console.warn("[outbox] flush item error:", item.id, e);
         failed++;
       }
     }
-    if (ok > 0) toast.success(`Synced ${ok} offline entr${ok === 1 ? "y" : "ies"}`);
+    if (ok > 0) toast.success(`Synced ${ok} offline record${ok === 1 ? "" : "s"} safely`);
     if (failed > 0)
-      toast.error(`${failed} offline entr${failed === 1 ? "y" : "ies"} could not sync`);
+      toast.error(`${failed} record${failed === 1 ? "" : "s"} pending retry in offline queue`);
   } finally {
     flushing = false;
   }
   return { ok, failed };
+}
+
+export async function clearQueue(): Promise<void> {
+  const items = await listQueue();
+  for (const item of items) {
+    await removeItem(item.id);
+  }
 }
 
 let wired = false;

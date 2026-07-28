@@ -27,6 +27,7 @@ import {
   Landmark,
   Sparkles,
   ChevronDown,
+  QrCode,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { GlobalAiDrawer } from "@/components/global-ai-drawer";
+import { BarcodeQrScanner } from "@/components/barcode-qr-scanner";
 
 type NavLeaf = { to: string; label: string; icon: any };
 type NavGroup = { label: string; icon: any; children: NavLeaf[] };
@@ -92,9 +94,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [fab, setFab] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
+
+    // Listen to Electron hardware scanner shortcut if running in Electron
+    if (typeof window !== "undefined" && (window as any).electronAPI) {
+      (window as any).electronAPI.onBarcodeScanner(() => {
+        setScannerOpen(true);
+      });
+    }
   }, []);
 
   const signOut = async () => {
@@ -108,16 +118,29 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background text-foreground">
       {/* Desktop sidebar */}
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 border-r bg-card flex-col">
-        <div className="px-6 py-5 flex items-center gap-2.5 border-b">
-          <div className="size-9 rounded-xl bg-brand text-brand-foreground grid place-items-center shadow-md shadow-brand/20">
-            <Flame className="size-5" />
-          </div>
-          <div>
-            <div className="font-display font-bold tracking-tight">Life Care Plant</div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Powered by Braintech Automation
+        <div className="px-5 py-4 flex items-center justify-between gap-2 border-b">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="size-9 rounded-xl bg-brand text-brand-foreground grid place-items-center shadow-md shadow-brand/20 shrink-0">
+              <Flame className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-display font-bold tracking-tight text-sm truncate">
+                Life Care Plant
+              </div>
+              <div className="text-[9px] uppercase tracking-wider text-muted-foreground truncate">
+                Powered by Braintech
+              </div>
             </div>
           </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => setScannerOpen(true)}
+            className="size-8 rounded-lg text-brand hover:bg-brand/10 shrink-0"
+            title="Scan Barcode / QR Code"
+          >
+            <QrCode className="size-4" />
+          </Button>
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
@@ -165,29 +188,52 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <span className="font-display font-bold text-base tracking-tight">Life Care Plant</span>
         </Link>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="size-9 rounded-full bg-muted border grid place-items-center text-xs font-bold">
-              {(email?.[0] ?? "U").toUpperCase()}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem disabled className="text-xs">
-              {email}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
-              <Settings className="size-4 mr-2" /> Settings
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={signOut}>
-              <LogOut className="size-4 mr-2" /> Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => setScannerOpen(true)}
+            className="size-9 rounded-full bg-muted/60"
+            title="Scan Barcode / QR Code"
+          >
+            <QrCode className="size-4 text-brand" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="size-9 rounded-full bg-muted border grid place-items-center text-xs font-bold">
+                {(email?.[0] ?? "U").toUpperCase()}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem disabled className="text-xs">
+                {email}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setScannerOpen(true)}>
+                <QrCode className="size-4 mr-2 text-brand" /> Scan Barcode / QR
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
+                <Settings className="size-4 mr-2" /> Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={signOut}>
+                <LogOut className="size-4 mr-2" /> Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </header>
 
       <main className="md:pl-64 pb-24 md:pb-8">
         <div className="max-w-6xl mx-auto p-4 md:p-8">{children}</div>
       </main>
+
+      {/* Barcode & QR Hardware Scanner Modal */}
+      <BarcodeQrScanner
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        onScan={(code) => {
+          navigate({ to: "/movements", search: { type: "receive", open: true } as any });
+        }}
+      />
 
       {/* Floating AI Assistant */}
       <GlobalAiDrawer />

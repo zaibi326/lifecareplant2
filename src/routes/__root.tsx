@@ -20,6 +20,7 @@ import "@fontsource/geist/600.css";
 import "@fontsource/geist/700.css";
 import { Toaster } from "@/components/ui/sonner";
 import { OfflineIndicator } from "@/components/offline-indicator";
+import { PwaInstallBanner } from "@/components/pwa-install-banner";
 import { registerPWA } from "@/lib/pwa-register";
 import { startOfflineSync } from "@/lib/offline-queue";
 
@@ -167,6 +168,7 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <OfflineIndicator />
+      <PwaInstallBanner />
       <Toaster position="top-center" />
     </QueryClientProvider>
   );
