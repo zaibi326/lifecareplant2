@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate, todayISO } from "@/lib/format";
 import { formatM3, gasConsumed } from "@/lib/bulk-gas";
@@ -35,6 +35,9 @@ import { Plus, Factory, Activity, Gauge, Flame, Calendar, Search, Filter } from 
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/production")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    open: s.open === true || s.open === "true",
+  }),
   head: () => ({ meta: [{ title: "Production Management — Life Care Plant" }] }),
   component: ProductionPage,
 });
@@ -52,10 +55,17 @@ const helpInfo: SelfHelpInfo = {
 };
 
 function ProductionPage() {
-  const [open, setOpen] = useState(false);
+  const searchRoute = Route.useSearch();
+  const [open, setOpen] = useState(searchRoute.open ?? false);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [search, setSearch] = useState("");
   const [shiftFilter, setShiftFilter] = useState("all");
+
+  useEffect(() => {
+    if (searchRoute.open) {
+      setOpen(true);
+    }
+  }, [searchRoute.open]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["production-full"],

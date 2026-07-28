@@ -397,50 +397,107 @@ function Dashboard() {
 
       <SelfHelpCard pageKey="dashboard" info={helpInfo} />
 
+      {/* Interactive Quick Action Buttons */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi label="In Plant" value={plantStock.toLocaleString()} sub="Cylinders" tone="default" />
+        <Link to="/movements" search={{ type: "receive", open: true } as any} className="block">
+          <Button
+            variant="outline"
+            className="w-full h-16 flex-col gap-1 border-brand/40 bg-brand/5 hover:bg-brand/10 hover:border-brand"
+          >
+            <ArrowDownToLine className="size-5 text-brand" />
+            <span className="text-xs font-bold">Receive Cylinders</span>
+          </Button>
+        </Link>
+        <Link to="/movements" search={{ type: "deliver", open: true } as any} className="block">
+          <Button
+            variant="outline"
+            className="w-full h-16 flex-col gap-1 border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary"
+          >
+            <ArrowUpFromLine className="size-5 text-primary" />
+            <span className="text-xs font-bold">Deliver Cylinders</span>
+          </Button>
+        </Link>
+        <Link to="/payments" search={{ open: true } as any} className="block">
+          <Button
+            variant="outline"
+            className="w-full h-16 flex-col gap-1 border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500"
+          >
+            <Wallet className="size-5 text-emerald-600" />
+            <span className="text-xs font-bold">Record Payment</span>
+          </Button>
+        </Link>
+        <Link to="/production" search={{ open: true } as any} className="block">
+          <Button
+            variant="outline"
+            className="w-full h-16 flex-col gap-1 border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500"
+          >
+            <Fuel className="size-5 text-amber-600" />
+            <span className="text-xs font-bold">Log Production</span>
+          </Button>
+        </Link>
+      </section>
+
+      {/* KPI Stat Metrics */}
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Kpi
+          label="In Plant"
+          value={plantStock.toLocaleString()}
+          sub="Cylinders"
+          tone="default"
+          to="/stock"
+        />
         <Kpi
           label="With Customers"
           value={withCustomers.toLocaleString()}
           sub={`${data?.customers.length ?? 0} clients`}
           tone="default"
+          to="/customers"
         />
-        <Kpi label="Received Today" value={`+${todayReceived}`} sub="Cylinders in" tone="success" />
+        <Kpi
+          label="Received Today"
+          value={`+${todayReceived}`}
+          sub="Cylinders in"
+          tone="success"
+          to="/movements"
+          search={{ type: "receive", open: true }}
+        />
         <Kpi
           label="Delivered Today"
           value={`-${todayDelivered}`}
           sub="Cylinders out"
           tone="brand"
+          to="/movements"
+          search={{ type: "deliver", open: true }}
         />
         <Kpi
           label="Filling Today"
           value={todayProduction.toLocaleString()}
           sub="Production"
           tone="warning"
+          to="/production"
+          search={{ open: true }}
         />
         <Kpi
           label="Payments Today"
           value={formatCurrency(todayPayments)}
           sub="Cash + Bank"
           tone="success"
+          to="/payments"
+          search={{ open: true }}
         />
         <Kpi
           label="Outstanding"
           value={formatCurrency(outstanding)}
           sub="Remaining due"
           tone="warning"
+          to="/reports"
         />
         <Kpi
           label="Cash in Hand"
           value={formatCurrency(cash.balance)}
           sub="Cash box"
           tone={cash.balance < 0 ? "warning" : "success"}
-        />
-        <Kpi
-          label="Bank Balance"
-          value={formatCurrency(bankBalance)}
-          sub={`${data?.bankAccounts.length ?? 0} account(s)`}
-          tone={bankBalance < 0 ? "warning" : "default"}
+          to="/cash"
         />
       </section>
 
@@ -693,11 +750,15 @@ function Kpi({
   value,
   sub,
   tone,
+  to,
+  search,
 }: {
   label: string;
   value: string;
   sub?: string;
   tone: "default" | "success" | "warning" | "brand";
+  to?: string;
+  search?: any;
 }) {
   const toneCls =
     tone === "success"
@@ -707,13 +768,30 @@ function Kpi({
         : tone === "brand"
           ? "text-brand"
           : "text-foreground";
-  return (
-    <div className="bg-card p-4 rounded-2xl border shadow-sm">
-      <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-        {label}
-      </p>
-      <p className={`font-display text-xl md:text-2xl font-bold ${toneCls}`}>{value}</p>
+
+  const content = (
+    <div className="bg-card p-4 rounded-2xl border shadow-sm hover:border-brand/50 transition-all cursor-pointer h-full flex flex-col justify-between">
+      <div>
+        <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+          {label}
+        </p>
+        <p className={`font-display text-xl md:text-2xl font-bold ${toneCls}`}>{value}</p>
+      </div>
       {sub && <p className="text-[10px] text-muted-foreground mt-1">{sub}</p>}
     </div>
   );
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        search={search}
+        className="block transition-transform hover:scale-[1.02] active:scale-95"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
 }

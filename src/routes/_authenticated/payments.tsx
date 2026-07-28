@@ -19,15 +19,27 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Badge } from "@/components/ui/badge";
 import { Plus, Wallet, Search } from "lucide-react";
 import { toast } from "sonner";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/_authenticated/payments")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    open: s.open === true || s.open === "true",
+    customer_id: (s.customer_id as string) ?? undefined,
+  }),
   head: () => ({ meta: [{ title: "Customer Payments — Life Care Plant" }] }),
   component: PaymentsPage,
 });
 
 function PaymentsPage() {
-  const [open, setOpen] = useState(false);
+  const searchRoute = Route.useSearch();
+  const [open, setOpen] = useState(searchRoute.open ?? false);
   const [q, setQ] = useState("");
+
+  useEffect(() => {
+    if (searchRoute.open) {
+      setOpen(true);
+    }
+  }, [searchRoute.open]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["payments"],
@@ -75,7 +87,10 @@ function PaymentsPage() {
             <SheetHeader>
               <SheetTitle>Record Payment</SheetTitle>
             </SheetHeader>
-            <PaymentForm onDone={() => setOpen(false)} />
+            <PaymentForm
+              defaultCustomerId={searchRoute.customer_id}
+              onDone={() => setOpen(false)}
+            />
           </SheetContent>
         </Sheet>
       </header>
@@ -103,7 +118,9 @@ function PaymentsPage() {
       <div className="space-y-2">
         {isLoading && <Card className="p-6 text-sm text-muted-foreground">Loading…</Card>}
         {!isLoading && filtered.length === 0 && (
-          <Card className="p-8 text-center text-sm text-muted-foreground">No payments yet.</Card>
+          <Card className="p-8 text-center text-sm text-muted-foreground">
+            No payments logged yet.
+          </Card>
         )}
         {filtered.map((p: any) => (
           <Card key={p.id} className="p-4 flex items-center gap-3">
@@ -131,13 +148,25 @@ function PaymentsPage() {
   );
 }
 
-function PaymentForm({ onDone }: { onDone: () => void }) {
+function PaymentForm({
+  defaultCustomerId,
+  onDone,
+}: {
+  defaultCustomerId?: string;
+  onDone: () => void;
+}) {
   const qc = useQueryClient();
-  const [customer, setCustomer] = useState("");
+  const [customer, setCustomer] = useState(defaultCustomerId ?? "");
   const [account, setAccount] = useState("cash");
   const [bankAccountId, setBankAccountId] = useState("");
   const [paymentType, setPaymentType] = useState("payment");
   const [date, setDate] = useState(todayISO());
+
+  useEffect(() => {
+    if (defaultCustomerId) {
+      setCustomer(defaultCustomerId);
+    }
+  }, [defaultCustomerId]);
 
   const { data: lookups } = useQuery({
     queryKey: ["payment-lookups"],

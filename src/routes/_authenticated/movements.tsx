@@ -61,19 +61,28 @@ const isSized = (n: string) => n === "Valve" || n === "Spindle";
 export const Route = createFileRoute("/_authenticated/movements")({
   validateSearch: (s: Record<string, unknown>) => ({
     type: ((s.type as MovType) ?? "receive") as MovType,
+    open: s.open === true || s.open === "true",
+    customer_id: (s.customer_id as string) ?? undefined,
   }),
   head: () => ({ meta: [{ title: "Movements — Life Care Plant" }] }),
   component: MovementsPage,
 });
 
 function MovementsPage() {
-  const { type } = Route.useSearch();
+  const search = Route.useSearch();
+  const { type, open: initialOpen, customer_id: initialCustomerId } = search;
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen ?? false);
   const [editing, setEditing] = useState<any | null>(null);
   const [deleteId, setDeleteId] = useState<string[] | null>(null);
   const [q, setQ] = useState("");
+
+  useEffect(() => {
+    if (initialOpen) {
+      setOpen(true);
+    }
+  }, [initialOpen]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["movements", type],
