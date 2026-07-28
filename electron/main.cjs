@@ -1,10 +1,54 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const net = require("net");
+const http = require("http");
+const { fork } = require("child_process");
 
 let mainWindow = null;
+let serverProcess = null;
 
 const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
+
+function findFreePort(startPort, cb) {
+  const server = net.createServer();
+  server.listen(startPort, "127.0.0.1", () => {
+    const port = server.address().port;
+    server.close(() => cb(port));
+  });
+  server.on("error", () => {
+    findFreePort(startPort + 1, cb);
+  });
+}
+
+function startEmbeddedServer(port, callback) {
+  const serverScript = path.join(__dirname, "../.output/server/index.mjs");
+  if (fs.existsSync(serverScript)) {
+    console.log("Launching embedded Nitro server on port:", port);
+    serverProcess = fork(serverScript, [], {
+      env: { ...process.env, PORT: String(port), HOST: "127.0.0.1" },
+      stdio: "ignore",
+    });
+  } else {
+    console.warn("Server script not found at:", serverScript);
+  }
+
+  let attempts = 0;
+  const poll = () => {
+    const req = http.get(`http://127.0.0.1:${port}`, (res) => {
+      callback(`http://127.0.0.1:${port}`);
+    });
+    req.on("error", () => {
+      attempts++;
+      if (attempts < 50) {
+        setTimeout(poll, 200);
+      } else {
+        callback(`http://127.0.0.1:${port}`);
+      }
+    });
+  };
+  poll();
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -18,7 +62,7 @@ function createWindow() {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
-      webSecurity: true,
+      webSecurity: false,
     },
     autoHideMenuBar: false,
     show: false,
@@ -26,23 +70,22 @@ function createWindow() {
 
   if (isDev && process.env.ELECTRON_START_URL) {
     mainWindow.loadURL(process.env.ELECTRON_START_URL);
+    mainWindow.once("ready-to-show", () => mainWindow.show());
   } else {
-    const indexPath = path.join(__dirname, "../.output/public/index.html");
-    if (fs.existsSync(indexPath)) {
-      mainWindow.loadFile(indexPath);
-    } else {
-      mainWindow.loadURL("http://localhost:3000");
-    }
+    findFreePort(3855, (port) => {
+      startEmbeddedServer(port, (url) => {
+        mainWindow.loadURL(url);
+        mainWindow.once("ready-to-show", () => mainWindow.show());
+      });
+    });
   }
-
-  mainWindow.once("ready-to-show", () => {
-    mainWindow.show();
-  });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("http:") || url.startsWith("https:")) {
-      shell.openExternal(url);
-      return { action: "deny" };
+      if (!url.includes("127.0.0.1") && !url.includes("localhost")) {
+        shell.openExternal(url);
+        return { action: "deny" };
+      }
     }
     return { action: "allow" };
   });
@@ -173,6 +216,14 @@ app.whenReady().then(() => {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on("will-quit", () => {
+  if (serverProcess) {
+    try {
+      serverProcess.kill();
+    } catch (e) {}
+  }
 });
 
 app.on("window-all-closed", () => {

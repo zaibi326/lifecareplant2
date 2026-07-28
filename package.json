@@ -24,20 +24,24 @@
       "output": "dist_electron"
     },
     "files": [
-      ".output/public/**/*",
+      ".output/**/*",
       "electron/**/*",
       "package.json"
     ],
     "win": {
       "target": [
-        "dir",
-        "zip"
+        "nsis",
+        "portable",
+        "dir"
       ],
       "icon": "public/icon-512.png"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Life Care Plant ERP"
     }
   },
   "dependencies": {
