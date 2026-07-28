@@ -7,6 +7,7 @@ import { generateInsights, computeBusinessHealthScore, type Insight } from "@/li
 import { computeCashInHand, computeTotalBankBalance } from "@/lib/finance";
 import { SelfHelpCard, type SelfHelpInfo } from "@/components/self-help-card";
 
+import { Button } from "@/components/ui/button";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -16,6 +17,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Info,
+  Wallet,
 } from "lucide-react";
 
 import {

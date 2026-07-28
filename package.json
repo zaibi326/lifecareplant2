@@ -1,6 +1,9 @@
 {
   "name": "lifecare-plant-erp",
   "productName": "Life Care Plant ERP",
+  "version": "2.0.0",
+  "description": "Life Care Plant — Gas Cylinder Plant ERP Desktop Edition",
+  "author": "Braintech Automation",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -26,10 +29,7 @@
       "package.json"
     ],
     "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ],
+      "target": ["dir", "zip"],
       "icon": "public/icon-512.png"
     },
     "nsis": {
@@ -102,7 +102,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.2.0",
-    "electron": "^34.0.0",
+    "electron": "34.0.0",
     "electron-builder": "^25.1.8",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
