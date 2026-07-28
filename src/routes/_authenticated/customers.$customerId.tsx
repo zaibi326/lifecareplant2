@@ -316,14 +316,34 @@ function CustomerProfilePage() {
                   {c.category}
                 </Badge>
               )}
+              {c.credit_limit > 0 && (
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] font-semibold ${
+                    balance.due > c.credit_limit
+                      ? "border-destructive text-destructive bg-destructive/10"
+                      : "border-emerald-500 text-emerald-600 bg-emerald-50"
+                  }`}
+                >
+                  {balance.due > c.credit_limit
+                    ? `Over Limit (${formatCurrency(balance.due - c.credit_limit)})`
+                    : `Limit: ${formatCurrency(c.credit_limit)}`}
+                </Badge>
+              )}
             </div>
+            {c.contract_notes && (
+              <div className="mt-2 text-xs bg-muted/40 p-2 rounded border border-border/50 text-muted-foreground">
+                <strong className="text-foreground font-semibold">Contract Terms:</strong>{" "}
+                {c.contract_notes}
+              </div>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3 mt-5">
-          <Mini icon={Package} label="With Customer" value={`${balance.withCust} cyl`} />
+          <Mini icon={Package} label="Customer Stock" value={`${balance.withCust} cyl`} />
           <Mini
             icon={Wallet}
-            label="Outstanding"
+            label="Remaining Due"
             value={formatCurrency(balance.due)}
             warn={balance.due > 0}
           />

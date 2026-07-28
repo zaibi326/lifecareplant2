@@ -1,5 +1,5 @@
-// Rule-based "AI" owner insights. Pure functions, no external calls — turns raw
-// business figures into prioritised, plain-language observations for the owner.
+// Rule-based AI Business Insights engine. Pure functions, turning raw
+// figures into prioritized, simple plain-language business insights and Health Score.
 
 export type InsightTone = "positive" | "warning" | "critical" | "info";
 
@@ -8,6 +8,7 @@ export type Insight = {
   tone: InsightTone;
   title: string;
   detail: string;
+  category?: "sales" | "production" | "expense" | "stock" | "due" | "supplier" | "general";
 };
 
 export type InsightInput = {
@@ -21,142 +22,163 @@ export type InsightInput = {
   todayProduction: number;
   monthRevenue: number; // billed this calendar month
   monthExpenses: number; // expenses this calendar month
-  bulkLow: { name: string; remaining: number }[]; // gas types at/below zero
+  bulkLow: { name: string; remaining: number }[]; // gas types at/below low threshold
   topDebtors: { name: string; due: number }[];
-  // Part 3 business intelligence (all optional — omitted when data is absent).
   bestCustomer?: { name: string; amount: number } | null; // highest billed this period
   bestSellingGas?: { name: string; qty: number } | null; // most delivered/filled gas
   topVehicleExpense?: { name: string; total: number } | null; // highest delivery expense
+  pendingSuppliers?: { name: string; due: number }[];
+  productionEfficiency?: number;
 };
 
 const currency = (n: number) => "Rs " + Math.round(n).toLocaleString();
 
+export function computeBusinessHealthScore(i: InsightInput): {
+  score: number;
+  label: string;
+  color: string;
+} {
+  let score = 70; // baseline
+
+  // Profitability check (+15 / -20)
+  const netProfit = i.monthRevenue - i.monthExpenses;
+  if (netProfit > 0) score += 15;
+  else if (netProfit < 0) score -= 20;
+
+  // Collection / Outstanding health check (+10 / -15)
+  if (i.outstanding === 0) score += 10;
+  else if (i.monthRevenue > 0 && i.outstanding > i.monthRevenue * 1.5) score -= 15;
+
+  // Low stock penalty (-15 per depleted bulk gas)
+  if (i.bulkLow.length > 0) score -= i.bulkLow.length * 10;
+
+  // Production efficiency bonus (+10 if >90%)
+  if (i.productionEfficiency && i.productionEfficiency >= 90) score += 10;
+
+  const finalScore = Math.max(10, Math.min(100, Math.round(score)));
+
+  let label = "Healthy";
+  let color = "text-emerald-600 border-emerald-500 bg-emerald-50";
+  if (finalScore < 50) {
+    label = "Needs Attention";
+    color = "text-rose-600 border-rose-500 bg-rose-50";
+  } else if (finalScore < 75) {
+    label = "Fair & Stable";
+    color = "text-amber-600 border-amber-500 bg-amber-50";
+  }
+
+  return { score: finalScore, label, color };
+}
+
 export function generateInsights(i: InsightInput): Insight[] {
   const out: Insight[] = [];
 
-  // Cash / profitability signal for the month so far.
+  // 1. Daily Business Summary & Activity
+  if (i.todayDelivered > 0 || i.todayReceived > 0 || i.todayProduction > 0 || i.todayPayments > 0) {
+    out.push({
+      id: "today-summary",
+      tone: "info",
+      category: "general",
+      title: "Daily Business Summary",
+      detail: `Today's activity: Delivered ${i.todayDelivered} cyl, Received ${i.todayReceived} empties, Filled ${i.todayProduction} cyl. Payments collected ${currency(i.todayPayments)}.`,
+    });
+  }
+
+  // 2. Sales Insights
   const net = i.monthRevenue - i.monthExpenses;
   if (i.monthRevenue > 0 || i.monthExpenses > 0) {
     if (net >= 0) {
       out.push({
-        id: "month-net",
+        id: "sales-insights",
         tone: "positive",
-        title: `Month is profitable so far: ${currency(net)}`,
-        detail: `Billed ${currency(i.monthRevenue)} against ${currency(i.monthExpenses)} expenses this month.`,
+        category: "sales",
+        title: "Sales & Monthly Revenue Insight",
+        detail: `Profitable operations this month: ${currency(net)} net margin. Billed ${currency(i.monthRevenue)} against ${currency(i.monthExpenses)} expenses.`,
       });
     } else {
       out.push({
-        id: "month-net",
+        id: "sales-insights",
         tone: "warning",
-        title: `Expenses exceed revenue by ${currency(-net)} this month`,
-        detail: `Billed ${currency(i.monthRevenue)} but spent ${currency(i.monthExpenses)}. Review large expenses.`,
+        category: "sales",
+        title: "Sales & Expense Alert",
+        detail: `Operating expenses exceed revenue by ${currency(-net)} this month. Review overheads and delivery costs.`,
       });
     }
   }
 
-  // Outstanding receivables.
-  if (i.outstanding > 0) {
-    const tone: InsightTone =
-      i.outstanding > i.monthRevenue && i.monthRevenue > 0 ? "critical" : "warning";
-    const topLine = i.topDebtors[0];
-    out.push({
-      id: "outstanding",
-      tone,
-      title: `${currency(i.outstanding)} outstanding from customers`,
-      detail: topLine
-        ? `Largest is ${topLine.name} at ${currency(topLine.due)}. Consider a follow-up.`
-        : "Chase overdue balances to improve cash flow.",
-    });
-  }
-
-  // Bulk gas depletion — operational risk.
-  if (i.bulkLow.length > 0) {
-    out.push({
-      id: "bulk-low",
-      tone: "critical",
-      title: `${i.bulkLow.length} gas type${i.bulkLow.length > 1 ? "s" : ""} depleted`,
-      detail: `Restock ${i.bulkLow.map((b) => b.name).join(", ")} — recorded balance is zero or negative. Filling may stop.`,
-    });
-  }
-
-  // Reconciliation mismatch — asset control risk.
-  if (i.totalOwned > 0) {
-    const diff = i.totalOwned - (i.plantStock + i.withCustomers);
-    if (diff !== 0) {
-      out.push({
-        id: "recon",
-        tone: Math.abs(diff) > i.totalOwned * 0.05 ? "critical" : "warning",
-        title: `Cylinder count off by ${Math.abs(diff)}`,
-        detail:
-          diff > 0
-            ? `${diff} owned cylinders are unaccounted for. Check missing movements or opening balances.`
-            : `Tracked count exceeds the owned fleet by ${-diff}. Check for duplicate receives.`,
-      });
-    } else {
-      out.push({
-        id: "recon",
-        tone: "positive",
-        title: "Cylinder stock fully reconciled",
-        detail: `All ${i.totalOwned.toLocaleString()} owned cylinders are accounted for across plant and customers.`,
-      });
-    }
-  }
-
-  // Today's activity summary.
-  if (i.todayDelivered > 0 || i.todayReceived > 0 || i.todayProduction > 0) {
-    out.push({
-      id: "today",
-      tone: "info",
-      title: "Today's activity",
-      detail: `Delivered ${i.todayDelivered}, received ${i.todayReceived}, filled ${i.todayProduction} cylinders. Payments ${currency(i.todayPayments)}.`,
-    });
-  }
-
-  // Idle plant stock note.
-  if (i.plantStock > 0 && i.withCustomers > 0) {
-    const utilisation = i.withCustomers / (i.plantStock + i.withCustomers);
-    if (utilisation < 0.4) {
-      out.push({
-        id: "utilisation",
-        tone: "info",
-        title: `${Math.round(utilisation * 100)}% of cylinders are out with customers`,
-        detail:
-          "A large share of the fleet is idle in the plant. Push deliveries to improve utilisation.",
-      });
-    }
-  }
-
-  // Best customer this period — recognise the top revenue account.
+  // 3. High Performing Customers
   if (i.bestCustomer && i.bestCustomer.amount > 0) {
     out.push({
-      id: "best-customer",
+      id: "high-performing-customer",
       tone: "positive",
-      title: `Top customer: ${i.bestCustomer.name}`,
-      detail: `${i.bestCustomer.name} accounts for ${currency(i.bestCustomer.amount)} of billing this month. Keep the relationship warm.`,
+      category: "sales",
+      title: `High Performing Customer: ${i.bestCustomer.name}`,
+      detail: `${i.bestCustomer.name} is your top account, generating ${currency(i.bestCustomer.amount)} in billed sales this month.`,
     });
   }
 
-  // Best-selling gas — helps stocking decisions.
-  if (i.bestSellingGas && i.bestSellingGas.qty > 0) {
+  // 4. High Due Customers & Outstanding
+  if (i.outstanding > 0) {
+    const tone: InsightTone =
+      i.monthRevenue > 0 && i.outstanding > i.monthRevenue ? "critical" : "warning";
+    const topLine = i.topDebtors[0];
     out.push({
-      id: "best-gas",
-      tone: "info",
-      title: `Best seller: ${i.bestSellingGas.name}`,
-      detail: `${i.bestSellingGas.name} leads with ${i.bestSellingGas.qty.toLocaleString()} cylinders moved this month. Keep it well stocked.`,
+      id: "high-due-customers",
+      tone,
+      category: "due",
+      title: `High Due Alert: ${currency(i.outstanding)} total remaining customer due`,
+      detail: topLine
+        ? `Highest due balance is held by ${topLine.name} (${currency(topLine.due)}). Send a WhatsApp payment reminder.`
+        : "Follow up on customer receivables to protect cash liquidity.",
     });
   }
 
-  // Highest vehicle expense — cost-control signal.
+  // 5. Low Stock Alerts
+  if (i.bulkLow.length > 0) {
+    out.push({
+      id: "low-stock-alert",
+      tone: "critical",
+      category: "stock",
+      title: `Low Stock Alert: ${i.bulkLow.length} gas type${i.bulkLow.length > 1 ? "s" : ""} low`,
+      detail: `Low bulk gas levels for ${i.bulkLow.map((b) => b.name).join(", ")}. Reorder bulk gas before plant filling halts.`,
+    });
+  }
+
+  // 6. Production Insights
+  if (i.todayProduction > 0 || (i.productionEfficiency && i.productionEfficiency > 0)) {
+    const eff = i.productionEfficiency ?? 100;
+    out.push({
+      id: "production-insights",
+      tone: eff >= 90 ? "positive" : "warning",
+      category: "production",
+      title: `Production Insight: ${eff}% Filling Efficiency`,
+      detail: `Plant produced ${i.todayProduction} filled cylinders today with an average gas conversion efficiency of ${eff}%.`,
+    });
+  }
+
+  // 7. Expense Insights
   if (i.topVehicleExpense && i.topVehicleExpense.total > 0) {
     out.push({
-      id: "vehicle-expense",
+      id: "expense-insights",
       tone: "warning",
-      title: `Highest vehicle cost: ${i.topVehicleExpense.name}`,
-      detail: `${i.topVehicleExpense.name} has run up ${currency(i.topVehicleExpense.total)} in delivery expenses this month. Review fuel and maintenance.`,
+      category: "expense",
+      title: `Expense Insight: ${i.topVehicleExpense.name}`,
+      detail: `${i.topVehicleExpense.name} accounts for highest delivery costs (${currency(i.topVehicleExpense.total)}) this month.`,
     });
   }
 
-  // Priority order: critical → warning → positive → info.
+  // 8. Supplier Performance
+  if (i.pendingSuppliers && i.pendingSuppliers.length > 0) {
+    const topSup = i.pendingSuppliers[0];
+    out.push({
+      id: "supplier-performance",
+      tone: "info",
+      category: "supplier",
+      title: `Supplier Payables Insight`,
+      detail: `${i.pendingSuppliers.length} pending supplier balance(s). Highest payable: ${topSup.name} (${currency(topSup.due)}).`,
+    });
+  }
+
   const rank: Record<InsightTone, number> = { critical: 0, warning: 1, positive: 2, info: 3 };
   return out.sort((a, b) => rank[a.tone] - rank[b.tone]);
 }

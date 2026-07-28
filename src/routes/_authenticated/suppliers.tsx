@@ -43,11 +43,25 @@ import {
 import { toast } from "sonner";
 import { printDocument } from "@/lib/print";
 import { formatSupplierStatement, openWhatsApp, type StatementLine } from "@/lib/whatsapp";
+import { SelfHelpCard, FormTip, type SelfHelpInfo } from "@/components/self-help-card";
 
 export const Route = createFileRoute("/_authenticated/suppliers")({
   head: () => ({ meta: [{ title: "Suppliers — Life Care Plant" }] }),
   component: SuppliersPage,
 });
+
+const helpInfo: SelfHelpInfo = {
+  title: "Supplier Management & Bulk Gas Purchases",
+  whatIsIt:
+    "Manage bulk gas suppliers, track purchase history, rate comparisons, supplier statements, and pending payables.",
+  whyUseIt:
+    "Maintains clear vendor accounts, monitors average purchase rate per m³, and tracks remaining supplier balances.",
+  firstStep:
+    "Click '+ New Supplier' to add a bulk supplier or click 'Purchase History' on any supplier card.",
+  requiredFields: "Supplier Name is required. Opening balance and contact details are optional.",
+  afterSaving:
+    "Supplier record is available when logging bulk gas purchases and supplier payments.",
+};
 
 type EditState = {
   id: string;
@@ -170,13 +184,15 @@ function SuppliersPage() {
             <Truck className="size-6" /> Suppliers
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Bulk gas suppliers and purchase history.
+            Bulk gas suppliers, payables, rate comparisons, and purchase history.
           </p>
         </div>
         <Button onClick={openNew} className="gap-2">
           <Plus className="size-4" /> New Supplier
         </Button>
       </header>
+
+      <SelfHelpCard pageKey="suppliers" info={helpInfo} />
 
       <Sheet
         open={open}

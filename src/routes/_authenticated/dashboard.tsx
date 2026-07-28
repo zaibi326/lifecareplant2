@@ -3,8 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatDate, todayISO } from "@/lib/format";
 import { buildBulkBalances, formatM3, gasConsumed } from "@/lib/bulk-gas";
-import { generateInsights, type Insight } from "@/lib/insights";
+import { generateInsights, computeBusinessHealthScore, type Insight } from "@/lib/insights";
 import { computeCashInHand, computeTotalBankBalance } from "@/lib/finance";
+import { SelfHelpCard, type SelfHelpInfo } from "@/components/self-help-card";
 
 import {
   ArrowDownToLine,
@@ -31,6 +32,18 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Life Care Plant" }] }),
   component: Dashboard,
 });
+
+const helpInfo: SelfHelpInfo = {
+  title: "Commercial ERP Operations Dashboard",
+  whatIsIt:
+    "High-level overview of daily plant production, cylinder stock movements, collections, customer dues, and AI Business Insights.",
+  whyUseIt:
+    "Monitors overall plant health score, alerts on low gas stock, tracks top revenue customers, and provides quick action shortcuts.",
+  firstStep:
+    "Use the floating Quick Action button (+) or click any card to navigate directly to its detailed module.",
+  requiredFields: "No fields required. All metrics update dynamically from daily plant entries.",
+  afterSaving: "Key performance indicators refresh automatically in real-time.",
+};
 
 function Dashboard() {
   const { data } = useQuery({
@@ -212,8 +225,12 @@ function Dashboard() {
     (data?.gases ?? []).filter((g: any) => /oxygen/i.test(g.name)).map((g: any) => g.id),
   );
   const isOxygen = (gasId: string | null | undefined) => !!gasId && oxygenGasIds.has(gasId);
-  const allProduction = ((data?.allProduction ?? []) as any[]).filter((r: any) => isOxygen(r.gas_type_id));
-  const allLocalFillings = (((data as any)?.localFillings ?? []) as any[]).filter((r: any) => isOxygen(r.gas_type_id));
+  const allProduction = ((data?.allProduction ?? []) as any[]).filter((r: any) =>
+    isOxygen(r.gas_type_id),
+  );
+  const allLocalFillings = (((data as any)?.localFillings ?? []) as any[]).filter((r: any) =>
+    isOxygen(r.gas_type_id),
+  );
   const allDeliveries = (((data as any)?.allMoves ?? []) as any[])
     .filter((m: any) => m.type === "deliver" && m.condition === "filled" && isOxygen(m.gas_type_id))
     .map((m: any) => {
@@ -338,14 +355,47 @@ function Dashboard() {
     .sort((a, b) => +new Date(b.at) - +new Date(a.at))
     .slice(0, 8);
 
+  const health = computeBusinessHealthScore({
+    plantStock,
+    withCustomers,
+    totalOwned: Number(data?.totalOwned ?? 0),
+    outstanding,
+    todayPayments,
+    todayDelivered,
+    todayReceived,
+    todayProduction,
+    monthRevenue: Number(data?.monthRevenue ?? 0),
+    monthExpenses: Number(data?.monthExpenses ?? 0),
+    bulkLow: bulkRows
+      .filter((b) => b.remaining <= 50)
+      .map((b) => ({ name: b.name, remaining: b.remaining })),
+    topDebtors,
+    bestCustomer,
+    bestSellingGas,
+  });
+
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
-          Plant Overview
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">{formatDate(new Date())}</p>
+      <header className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">
+            Plant Overview
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">{formatDate(new Date())}</p>
+        </div>
+
+        <div className={`px-4 py-2 rounded-xl border flex items-center gap-3 ${health.color}`}>
+          <div className="font-display font-extrabold text-2xl">{health.score}</div>
+          <div className="text-xs">
+            <div className="font-semibold uppercase tracking-wider text-[10px]">
+              Business Health
+            </div>
+            <div className="font-bold">{health.label}</div>
+          </div>
+        </div>
       </header>
+
+      <SelfHelpCard pageKey="dashboard" info={helpInfo} />
 
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Kpi label="In Plant" value={plantStock.toLocaleString()} sub="Cylinders" tone="default" />

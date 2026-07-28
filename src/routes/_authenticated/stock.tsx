@@ -255,8 +255,12 @@ function StockPage() {
   );
   const isOxygen = (gasId: string | null | undefined) => !!gasId && oxygenGasIds.has(gasId);
 
-  const allProduction = ((data?.allProduction ?? []) as any[]).filter((r: any) => isOxygen(r.gas_type_id));
-  const allLocalFillings = ((data?.localFillings ?? []) as any[]).filter((r: any) => isOxygen(r.gas_type_id));
+  const allProduction = ((data?.allProduction ?? []) as any[]).filter((r: any) =>
+    isOxygen(r.gas_type_id),
+  );
+  const allLocalFillings = ((data?.localFillings ?? []) as any[]).filter((r: any) =>
+    isOxygen(r.gas_type_id),
+  );
   const allDeliveries = ((data?.movements ?? []) as any[])
     .filter((m: any) => m.type === "deliver" && m.condition === "filled" && isOxygen(m.gas_type_id))
     .map((m: any) => {

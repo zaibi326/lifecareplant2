@@ -51,11 +51,26 @@ import {
 import { toast } from "sonner";
 import { printDocument } from "@/lib/print";
 import { formatCustomerStatement, openWhatsApp } from "@/lib/whatsapp";
+import { SelfHelpCard, FormTip, type SelfHelpInfo } from "@/components/self-help-card";
 
 export const Route = createFileRoute("/_authenticated/customers")({
   head: () => ({ meta: [{ title: "Customers — Life Care Plant" }] }),
   component: CustomersPage,
 });
+
+const helpInfo: SelfHelpInfo = {
+  title: "Customer Management & Credit Control",
+  whatIsIt:
+    "Register commercial customers, set credit limits, maintain contract pricing, and track remaining due balances and cylinder holdings.",
+  whyUseIt:
+    "Enforces credit limit safety, enables one-click WhatsApp payment reminders, and keeps accurate customer ledgers.",
+  firstStep:
+    "Click '+ New Customer' to add a client or select any customer card to open their profile statement.",
+  requiredFields:
+    "Customer Name is required. Credit Limit and Contract Notes are optional but recommended.",
+  afterSaving:
+    "Customer record is updated instantly and available across billing and delivery workflows.",
+};
 
 type OpenRow = {
   gas_type_id: string;
@@ -71,6 +86,8 @@ type EditState = {
   category: string;
   opening_due: number;
   karaya_per_cylinder: number;
+  credit_limit: number;
+  contract_notes: string;
   notes: string;
 } | null;
 
@@ -287,6 +304,8 @@ function CustomersPage() {
       category: String(f.get("category") ?? "").trim() || null,
       opening_due: Number(f.get("opening_due") ?? 0),
       karaya_per_cylinder: Number(f.get("karaya_per_cylinder") ?? 0),
+      credit_limit: Number(f.get("credit_limit") ?? 0),
+      contract_notes: String(f.get("contract_notes") ?? "").trim() || null,
       notes: String(f.get("notes") ?? "").trim() || null,
     });
   };
@@ -319,6 +338,8 @@ function CustomersPage() {
       category: c.category ?? "",
       opening_due: Number(c.opening_due ?? 0),
       karaya_per_cylinder: Number(c.karaya_per_cylinder ?? 0),
+      credit_limit: Number(c.credit_limit ?? 0),
+      contract_notes: c.contract_notes ?? "",
       notes: c.notes ?? "",
     });
     setOpen(true);
@@ -379,12 +400,16 @@ function CustomersPage() {
       <header className="flex items-end justify-between gap-3 flex-wrap">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">Customers</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage clients, balances and dues.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage clients, credit limits, contracts, and dues.
+          </p>
         </div>
         <Button onClick={openNew} className="gap-2">
           <Plus className="size-4" /> New Customer
         </Button>
       </header>
+
+      <SelfHelpCard pageKey="customers" info={helpInfo} />
 
       <Sheet
         open={open}
@@ -413,19 +438,34 @@ function CustomersPage() {
             </div>
             <Field label="Address" name="address" defaultValue={editing?.address} />
             <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Field
+                  label="Opening Due (Rs)"
+                  name="opening_due"
+                  type="number"
+                  defaultValue={editing?.opening_due ?? 0}
+                />
+              </div>
+              <div>
+                <Field
+                  label="Credit Limit (Rs)"
+                  name="credit_limit"
+                  type="number"
+                  defaultValue={editing?.credit_limit ?? 0}
+                  placeholder="Maximum due allowed"
+                />
+                <FormTip text="Warning alert if customer due exceeds this credit limit." />
+              </div>
+            </div>
+
+            <div>
               <Field
-                label="Opening Due (Rs)"
-                name="opening_due"
-                type="number"
-                defaultValue={editing?.opening_due ?? 0}
+                label="Contract Notes & Pricing Terms"
+                name="contract_notes"
+                defaultValue={editing?.contract_notes ?? ""}
+                placeholder="Special contract terms, agreed cylinder rates, etc."
               />
-              <Field
-                label="Karaya / Cylinder (Rs)"
-                name="karaya_per_cylinder"
-                type="number"
-                defaultValue={editing?.karaya_per_cylinder ?? 0}
-                placeholder="Flat rent per cylinder"
-              />
+              <FormTip text="Custom contract details or agreed cylinder rates for this client." />
             </div>
 
             <div className="rounded-lg border p-3 space-y-2">

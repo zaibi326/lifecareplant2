@@ -37,6 +37,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { GlobalAiDrawer } from "@/components/global-ai-drawer";
 
 type NavLeaf = { to: string; label: string; icon: any };
 type NavGroup = { label: string; icon: any; children: NavLeaf[] };
@@ -187,6 +188,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="md:pl-64 pb-24 md:pb-8">
         <div className="max-w-6xl mx-auto p-4 md:p-8">{children}</div>
       </main>
+
+      {/* Floating AI Assistant */}
+      <GlobalAiDrawer />
 
       {/* Floating action button */}
       <Sheet open={fab} onOpenChange={setFab}>
