@@ -39,7 +39,17 @@ function startEmbeddedServer(port, callback) {
         HOST: "127.0.0.1",
         ELECTRON_RUN_AS_NODE: "1",
       },
-      stdio: "ignore",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    if (serverProcess.stdout) {
+      serverProcess.stdout.on("data", (data) => console.log("[NITRO SERVER]", data.toString().trim()));
+    }
+    if (serverProcess.stderr) {
+      serverProcess.stderr.on("data", (data) => console.error("[NITRO SERVER ERR]", data.toString().trim()));
+    }
+    serverProcess.on("exit", (code, signal) => {
+      console.warn(`[NITRO SERVER EXITED] code: ${code}, signal: ${signal}`);
     });
   } else {
     console.warn("Server script not found in candidates:", candidatePaths);
@@ -83,15 +93,25 @@ function createWindow() {
 
   if (isDev && process.env.ELECTRON_START_URL) {
     mainWindow.loadURL(process.env.ELECTRON_START_URL);
-    mainWindow.once("ready-to-show", () => mainWindow.show());
+    mainWindow.once("ready-to-show", () => {
+      mainWindow.show();
+      mainWindow.webContents.openDevTools();
+    });
   } else {
     findFreePort(3855, (port) => {
       startEmbeddedServer(port, (url) => {
         mainWindow.loadURL(url);
-        mainWindow.once("ready-to-show", () => mainWindow.show());
+        mainWindow.once("ready-to-show", () => {
+          mainWindow.show();
+          mainWindow.webContents.openDevTools();
+        });
       });
     });
   }
+
+  mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => {
+    console.error("[ELECTRON] Page failed to load:", errorCode, errorDescription, validatedURL);
+  });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("http:") || url.startsWith("https:")) {
