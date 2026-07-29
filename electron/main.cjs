@@ -22,26 +22,39 @@ function findFreePort(startPort, cb) {
 }
 
 function startEmbeddedServer(port, callback) {
-  const serverScript = path.join(__dirname, "../.output/server/index.mjs");
-  if (fs.existsSync(serverScript)) {
-    console.log("Launching embedded Nitro server on port:", port);
+  const candidatePaths = [
+    path.join(__dirname, "../.output/server/index.mjs"),
+    path.join(process.resourcesPath, "app", ".output", "server", "index.mjs"),
+    path.join(process.resourcesPath, ".output", "server", "index.mjs"),
+  ];
+
+  let serverScript = candidatePaths.find((p) => fs.existsSync(p));
+
+  if (serverScript) {
+    console.log("Launching embedded Nitro server on port:", port, "from:", serverScript);
     serverProcess = fork(serverScript, [], {
-      env: { ...process.env, PORT: String(port), HOST: "127.0.0.1" },
+      env: {
+        ...process.env,
+        PORT: String(port),
+        HOST: "127.0.0.1",
+        ELECTRON_RUN_AS_NODE: "1",
+      },
       stdio: "ignore",
     });
   } else {
-    console.warn("Server script not found at:", serverScript);
+    console.warn("Server script not found in candidates:", candidatePaths);
   }
 
   let attempts = 0;
   const poll = () => {
     const req = http.get(`http://127.0.0.1:${port}`, (res) => {
+      console.log("Embedded server ready at:", `http://127.0.0.1:${port}`);
       callback(`http://127.0.0.1:${port}`);
     });
     req.on("error", () => {
       attempts++;
-      if (attempts < 50) {
-        setTimeout(poll, 200);
+      if (attempts < 60) {
+        setTimeout(poll, 150);
       } else {
         callback(`http://127.0.0.1:${port}`);
       }
