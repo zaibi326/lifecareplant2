@@ -3,11 +3,8 @@ const path = require("path");
 const fs = require("fs");
 const net = require("net");
 const http = require("http");
-const { fork } = require("child_process");
 
 let mainWindow = null;
-let serverProcess = null;
-
 const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
 
 function findFreePort(startPort, cb) {
@@ -21,7 +18,7 @@ function findFreePort(startPort, cb) {
   });
 }
 
-function startEmbeddedServer(port, callback) {
+async function startEmbeddedServer(port, callback) {
   const candidatePaths = [
     path.join(__dirname, "../.output/server/index.mjs"),
     path.join(process.resourcesPath, "app", ".output", "server", "index.mjs"),
@@ -31,34 +28,26 @@ function startEmbeddedServer(port, callback) {
   let serverScript = candidatePaths.find((p) => fs.existsSync(p));
 
   if (serverScript) {
-    console.log("Launching embedded Nitro server on port:", port, "from:", serverScript);
-    serverProcess = fork(serverScript, [], {
-      env: {
-        ...process.env,
-        PORT: String(port),
-        HOST: "127.0.0.1",
-        ELECTRON_RUN_AS_NODE: "1",
-      },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
-    if (serverProcess.stdout) {
-      serverProcess.stdout.on("data", (data) => console.log("[NITRO SERVER]", data.toString().trim()));
+    console.log("[ELECTRON MAIN] Importing Nitro server in-process on port:", port, "from:", serverScript);
+    process.env.PORT = String(port);
+    process.env.HOST = "127.0.0.1";
+    process.env.NITRO_PORT = String(port);
+    process.env.NITRO_HOST = "127.0.0.1";
+    try {
+      const fileUrl = require("url").pathToFileURL(serverScript).href;
+      await import(fileUrl);
+      console.log("[ELECTRON MAIN] Nitro server imported successfully.");
+    } catch (err) {
+      console.error("[ELECTRON MAIN] Error importing Nitro server:", err);
     }
-    if (serverProcess.stderr) {
-      serverProcess.stderr.on("data", (data) => console.error("[NITRO SERVER ERR]", data.toString().trim()));
-    }
-    serverProcess.on("exit", (code, signal) => {
-      console.warn(`[NITRO SERVER EXITED] code: ${code}, signal: ${signal}`);
-    });
   } else {
-    console.warn("Server script not found in candidates:", candidatePaths);
+    console.warn("[ELECTRON MAIN] Server script not found in candidates:", candidatePaths);
   }
 
   let attempts = 0;
   const poll = () => {
     const req = http.get(`http://127.0.0.1:${port}`, (res) => {
-      console.log("Embedded server ready at:", `http://127.0.0.1:${port}`);
+      console.log("[ELECTRON MAIN] Embedded server ready at:", `http://127.0.0.1:${port}`);
       callback(`http://127.0.0.1:${port}`);
     });
     req.on("error", () => {
@@ -110,7 +99,7 @@ function createWindow() {
   }
 
   mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => {
-    console.error("[ELECTRON] Page failed to load:", errorCode, errorDescription, validatedURL);
+    console.error("[ELECTRON MAIN] Page failed to load:", errorCode, errorDescription, validatedURL);
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -249,14 +238,6 @@ app.whenReady().then(() => {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
-});
-
-app.on("will-quit", () => {
-  if (serverProcess) {
-    try {
-      serverProcess.kill();
-    } catch (e) {}
-  }
 });
 
 app.on("window-all-closed", () => {
