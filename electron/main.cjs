@@ -33,6 +33,12 @@ async function startEmbeddedServer(port, callback) {
     process.env.HOST = "127.0.0.1";
     process.env.NITRO_PORT = String(port);
     process.env.NITRO_HOST = "127.0.0.1";
+    const appDir = path.dirname(path.dirname(serverScript));
+    try {
+      process.chdir(appDir);
+    } catch (e) {
+      console.warn("[ELECTRON MAIN] Could not change dir to:", appDir, e);
+    }
     try {
       const fileUrl = require("url").pathToFileURL(serverScript).href;
       await import(fileUrl);
