@@ -47,37 +47,82 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
+  console.error("[ERP ERROR]", error);
   const router = useRouter();
+
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
+  const errorMessage = error?.message || "Unknown system anomaly";
+  const isNetwork = errorMessage.toLowerCase().includes("fetch") || errorMessage.toLowerCase().includes("network") || errorMessage.toLowerCase().includes("failed to fetch");
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+    <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4 py-12 text-slate-100 font-sans">
+      <div className="w-full max-w-lg rounded-xl border border-slate-800 bg-slate-950 p-6 shadow-2xl md:p-8">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-500">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="h-6 w-6"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+              />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-lg font-bold tracking-tight text-white">System Diagnostics Alert</h2>
+            <p className="text-xs text-slate-400">Gas Cylinder Plant ERP Session Error</p>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-lg bg-slate-900/60 p-4 border border-slate-800/80">
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Error Details</div>
+          <div className="mt-2 text-xs font-mono text-amber-300 break-words leading-relaxed">
+            {errorMessage}
+          </div>
+          {isNetwork && (
+            <p className="mt-2 text-[11px] text-slate-400 leading-normal">
+              💡 This seems like a connection issue. Check your internet connectivity or connection to local ERP server.
+            </p>
+          )}
+        </div>
+
+        <div className="mt-6 flex flex-wrap justify-between gap-3">
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                router.invalidate();
+                reset();
+              }}
+              className="inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 text-xs font-medium text-white transition-all hover:bg-brand/95 cursor-pointer shadow-lg active:scale-95"
+            >
+              Retry Session
+            </button>
+            <a
+              href="/"
+              className="inline-flex items-center justify-center rounded-lg border border-slate-800 bg-slate-900 px-4 py-2 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800 hover:text-white"
+            >
+              Dashboard
+            </a>
+          </div>
+
           <button
             onClick={() => {
-              router.invalidate();
-              reset();
+              navigator.clipboard.writeText(errorMessage + "\n\nStack:\n" + (error?.stack || ""));
+              alert("System diagnostics copied to clipboard!");
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-lg border border-dashed border-slate-800 bg-transparent px-3 py-2 text-xs font-medium text-slate-400 transition-colors hover:border-slate-700 hover:text-slate-300"
           >
-            Try again
+            Copy Logs
           </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Go home
-          </a>
         </div>
       </div>
     </div>

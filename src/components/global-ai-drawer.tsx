@@ -78,7 +78,7 @@ export function GlobalAiDrawer() {
           .from("cylinder_movements")
           .select("type,quantity,gas_type_id,cylinder_size_id,condition"),
         supabase.from("production").select("quantity,gas_consumed").eq("date", today),
-        supabase.from("suppliers").select("id,name,opening_balance"),
+        supabase.from("suppliers").select("*"),
         supabase.from("supplier_payments").select("amount,supplier_id"),
       ]);
 

@@ -108,8 +108,8 @@ function ReportsPage() {
             .select("amount,category,date,payee,account")
             .gte("date", from)
             .lte("date", to),
-          supabase.from("customers").select("id,name,opening_due,credit_limit"),
-          supabase.from("suppliers").select("id,name,opening_balance"),
+          supabase.from("customers").select("*"),
+          supabase.from("suppliers").select("*"),
           supabase
             .from("supplier_payments")
             .select("amount,date,supplier_id,suppliers(name),account"),
