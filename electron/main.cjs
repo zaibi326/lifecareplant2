@@ -81,6 +81,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       webSecurity: false,
+      devTools: isDev,
     },
     autoHideMenuBar: false,
     show: false,
@@ -98,7 +99,9 @@ function createWindow() {
         mainWindow.loadURL(url);
         mainWindow.once("ready-to-show", () => {
           mainWindow.show();
-          mainWindow.webContents.openDevTools();
+          if (isDev) {
+            mainWindow.webContents.openDevTools();
+          }
         });
       });
     });
@@ -165,21 +168,7 @@ function buildAppMenu() {
       ],
     },
     {
-      label: "View",
-      submenu: [
-        { role: "reload", label: "Refresh App" },
-        { role: "forceReload" },
-        { type: "separator" },
-        { role: "resetZoom" },
-        { role: "zoomIn" },
-        { role: "zoomOut" },
-        { type: "separator" },
-        { role: "togglefullscreen", label: "Full Screen" },
-        { role: "toggleDevTools", label: "Developer Tools" },
-      ],
-    },
-    {
-      label: "Hardware",
+      label: "Hardware & Tools",
       submenu: [
         {
           label: "Scan Barcode / QR",
@@ -221,6 +210,18 @@ function buildAppMenu() {
       ],
     },
   ];
+
+  if (isDev) {
+    template.splice(2, 0, {
+      label: "Developer",
+      submenu: [
+        { role: "reload", label: "Refresh App" },
+        { role: "forceReload" },
+        { type: "separator" },
+        { role: "toggleDevTools", label: "Developer Tools" },
+      ],
+    });
+  }
 
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
