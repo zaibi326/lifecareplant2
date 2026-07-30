@@ -184,7 +184,7 @@ function ReportsPage() {
 
     const cashExpenses = exp
       .filter((e: any) => e.account === "cash")
-      .reduce((a: number, b: any) => a + Number(e.amount ?? 0), 0);
+      .reduce((a: number, b: any) => a + Number(b.amount ?? 0), 0);
 
     const cashSupplierPays = sps
       .filter((s: any) => s.account === "cash")
