@@ -38,18 +38,18 @@ function esc(v: unknown): string {
  * (usually one or more <h2> sections + <table>s and a .totals block).
  */
 export function printDocument(opts: {
-  company: CompanyInfo;
+  company?: CompanyInfo;
   docTitle: string; // window/document title
   badge?: string; // e.g. "STATEMENT", "REPORT", "INVOICE"
   rightBlockHTML?: string; // party info shown top-right (already-formed HTML)
   bodyHTML: string; // main content
   footerNote?: string;
 }) {
-  const companyName = esc(opts.company.name || "Life Care Plant");
-  const address = opts.company.address
+  const companyName = esc(opts.company?.name || "Life Care Plant");
+  const address = opts.company?.address
     ? `<div class="muted">${esc(opts.company.address)}</div>`
     : "";
-  const phone = opts.company.phone ? `<div class="muted">${esc(opts.company.phone)}</div>` : "";
+  const phone = opts.company?.phone ? `<div class="muted">${esc(opts.company.phone)}</div>` : "";
   const badge = opts.badge ? `<span class="badge">${esc(opts.badge)}</span>` : "";
   const right = opts.rightBlockHTML
     ? `<div style="text-align:right">${badge}${opts.rightBlockHTML}</div>`

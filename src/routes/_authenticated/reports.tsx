@@ -121,7 +121,11 @@ function ReportsPage() {
             .select("amount,direction,date,reason")
             .gte("date", from)
             .lte("date", to),
-          supabase.from("settings").select("currency").eq("id", 1).maybeSingle(),
+          supabase
+            .from("settings")
+            .select("company_name,company_address,company_phone,currency")
+            .eq("id", 1)
+            .maybeSingle(),
         ]);
 
       return {
@@ -135,6 +139,11 @@ function ReportsPage() {
         supplierPayments: supPays.data ?? [],
         banks: banks.data ?? [],
         cashAdjustments: cashAdjs.data ?? [],
+        company: {
+          name: settings.data?.company_name ?? "Life Care Plant",
+          address: settings.data?.company_address ?? null,
+          phone: settings.data?.company_phone ?? null,
+        },
         currency: settings.data?.currency ?? "Rs",
       };
     },
@@ -322,9 +331,11 @@ function ReportsPage() {
   // Print PDF helper
   const handlePrintPDF = () => {
     printDocument({
-      title: "Commercial Financial & Performance Report",
-      subtitle: `Date Period: ${formatDate(from)} to ${formatDate(to)}`,
-      bodyHtml: `
+      company: data?.company ?? { name: "Life Care Plant" },
+      docTitle: "Commercial Financial & Performance Report",
+      badge: "REPORT",
+      rightBlockHTML: `<div style="margin-top:4px" class="muted">Period: ${formatDate(from)} to ${formatDate(to)}</div>`,
+      bodyHTML: `
         <div style="font-family: sans-serif; font-size: 13px;">
           <h3 style="margin-bottom: 8px;">Business Performance Summary</h3>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">

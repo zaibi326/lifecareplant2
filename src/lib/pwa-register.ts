@@ -29,6 +29,7 @@ export async function registerPWA() {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
   const url = new URL(window.location.href);
+  const inIframe = window.self !== window.top;
   const isElectron =
     typeof window !== "undefined" &&
     (navigator.userAgent.includes("Electron") || Boolean((window as any).electronAPI));
